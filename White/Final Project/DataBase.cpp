@@ -9,6 +9,7 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <tuple>
 
 using namespace std;
 
@@ -23,7 +24,7 @@ class Date {
 
   Date& operator=(const Date& rhs);
 
-  std::string GetDate(char separator = '.') const;
+  std::string GetDate(char separator = '-') const;
 
  private:
   int year;
@@ -159,11 +160,14 @@ void Date::CheckData() {
 }
 
 bool operator<(const Date& lhs, const Date& rhs) {
-  return (lhs.GetYear() < rhs.GetYear() || lhs.GetMonth() < rhs.GetMonth() || lhs.GetDay() < rhs.GetDay());
+  //return (lhs.GetYear() < rhs.GetYear() && lhs.GetMonth() < rhs.GetMonth() && lhs.GetDay() < rhs.GetDay());
+  int l_year = lhs.GetYear(), l_month = lhs.GetMonth(), l_day = lhs.GetDay();
+  int r_year = rhs.GetYear(), r_month = rhs.GetMonth(), r_day = rhs.GetDay();
+  return (std::tie(l_year, l_month, l_day) < std::tie(r_year, r_month, r_day));
 }
 
 bool operator>(const Date& lhs, const Date& rhs) {
-  return (lhs.GetYear() > rhs.GetYear() || lhs.GetMonth() < rhs.GetMonth() || lhs.GetDay() < rhs.GetDay());
+  return (lhs.GetYear() > rhs.GetYear() && lhs.GetMonth() < rhs.GetMonth() && lhs.GetDay() < rhs.GetDay());
 }
 
 bool operator==(const Date& lhs, const Date& rhs) {
@@ -192,18 +196,10 @@ void Database::AddEvent(const Date &date, const string &event) {
 }
 
 bool Database::DeleteEvent(const Date &date, const string &event) {
-  /*
-  if(!data_.count(date) || data_[date].find(event) == data_[date].end()) {
-    return false;
-  }
-  else {
-    data_[date].erase(event);
-    return true;
-  }
-   */
   try {
-    data_.at(date).erase(event);
-    return true;
+    auto b = data_.at(date).erase(event);
+    if (b) return true;
+    else return false;
   }
   catch (exception& ex) {
     return false;
@@ -308,21 +304,6 @@ void Find(const std::string& raw_date, Database& db) {
 void Print(Database& db) {
   db.Print();
 }
-
-/*
-1999-99-99
--1999--99--99
-+1999-+99-+99
---1999-99-99
-*-1999-99-99
-*1999-99-99
-1999*99*99
-1999-*99-99
-1999-99*99
-1999*99-99
-1999-*99-99
-1999-99-*99
-*/
 
 int main() {
   Database db;
