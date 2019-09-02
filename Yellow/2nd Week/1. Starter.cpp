@@ -30,10 +30,8 @@ istream& operator >> (istream& is, Query& q) {
     int stop_count;
     is >> stop_count;
     std::vector<string> stops(stop_count);
-    stops.resize(stop_count);
     for (auto& stop : stops) {
       is >> stop;
-      stops.push_back(stop);
     }
     q.stops = stops;
   }
@@ -65,7 +63,7 @@ struct BusesForStopResponse {
 };
 
 ostream& operator << (ostream& os, const BusesForStopResponse& r) {
-  //ContainerPrint(os, r.response);
+  auto b = r.stream_response.str();
   os << r.stream_response.str();
   return os;
 }
@@ -76,7 +74,7 @@ struct StopsForBusResponse {
 };
 
 ostream& operator << (ostream& os, const StopsForBusResponse& r) {
-  //ContainerPrint(os, r.response);
+  auto b = r.stream_response.str();
   os << r.stream_response.str();
   return os;
 }
@@ -87,7 +85,7 @@ struct AllBusesResponse {
 };
 
 ostream& operator << (ostream& os, const AllBusesResponse& r) {
-  //ContainerPrint(os, r.response);
+  auto b = r.stream_response.str();
   os << r.stream_response.str();
   return os;
 }
@@ -95,6 +93,7 @@ ostream& operator << (ostream& os, const AllBusesResponse& r) {
 class BusManager {
 public:
   void AddBus(const string& bus, const vector<string>& stops) {
+    buses_to_stops[bus] = stops;
     for (auto& stop : stops) {
       stops_to_buses[stop].push_back(bus);
     }
@@ -106,12 +105,10 @@ public:
       response.stream_response << "No stop" << endl;
     }
     else {
-      if (stops_to_buses.count(stop)) {
-        for (const string& bus : stops_to_buses.at(stop)) {
-          response.stream_response << bus << " ";
-        }
-        response.stream_response << endl;
+      for (const string& bus : stops_to_buses.at(stop)) {
+        response.stream_response << bus << " ";
       }
+      response.stream_response << endl;
     }
     return response;
   }
