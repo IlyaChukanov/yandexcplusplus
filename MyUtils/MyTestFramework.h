@@ -14,6 +14,9 @@
 #include <utility>
 #include <functional>
 #include <queue>
+#include <random>
+
+using namespace std;
 
 template <typename First, typename Second>
 std::ostream& operator << (std::ostream& out, const std::pair<First, Second>& p) {
@@ -72,13 +75,18 @@ bool MoreOrEqual(const T& first, const U& second) {
 
 template<class T, class U>
 bool Equal(const T& first, const U& second) {
-  auto b = first == second;
   return first == second;
+}
+
+template<class T, class U>
+bool NotEqual(const T& first, const U& second) {
+  return first != second;
 }
 
 template<class T, class U, class Comparator>
 void Assert(const T& first, const U& second, const Comparator& comp, const std::string& description) {
-  if (!comp(first, second)) {
+  bool check = comp(first, second);
+  if (!check) {
     std::ostringstream os;
     os << std::boolalpha << "Assertion failed:" << "\n{\n" << first << "\n}\n" << "Operation: " << description << " Result: " << check << "\n{\n" << second << "\n}" ;
     throw std::runtime_error(os.str());
@@ -150,17 +158,6 @@ class UnitTestList {
     list_name = tests_name;
   }
 
-  ~UnitTestList() {
-    if (fail_count > 0) {
-      std::cerr << list_name << " not successful" << std::endl;
-      std::cerr << fail_count << " unit tests failed. Terminate" << std::endl;
-      //exit(1);
-    }
-    else {
-      std::cerr << list_name << " successful" << std::endl;
-    }
-  }
-
   std::pair<int, int> RunTests() {
 
     std::cerr << std::endl;
@@ -191,7 +188,9 @@ class UnitTestList {
 
   std::string list_name;
   int fail_count = 0;
+
   std::queue<UnitTest> unit_test_list;
+
 };
 
 // TODO Не работает в тестовой системе, что-то с ним не так. Не знаю что.
@@ -199,7 +198,6 @@ class UnitTestManager {
  public:
   UnitTestManager() : good_tests(0), fail_tests(0) {};
   ~UnitTestManager() {
-    /*
     std::cerr << "=============================================\n"
                  "============= RESULT OF TESTING =============\n"
                  "=============================================\n";
@@ -208,13 +206,12 @@ class UnitTestManager {
     for (const auto& name : failed_test_) {
       std::cerr << name << " is failed" << std::endl;
     }
-    */
     if (fail_tests > 0) {
       std::cerr << "Failed testing of programm. Terminate" << std::endl;
       exit(1);
     }
     else {
-      std::cerr << "Success" << std::endl;
+      std::cerr << "Success testing of programm" << std::endl;
     }
   }
 
