@@ -1,101 +1,90 @@
 //
-// Created by ilya on 12.09.2019.
+// Created by ilya on 14.09.2019.
 //
 
 #include <string>
 #include <iostream>
-#include <vector>
+#include <deque>
 
 struct Operation {
-  std::string operation;
-  int number;
+  char operation;
+  int32_t number;
 };
 
-std::istream& operator>>(std::istream& stream, Operation& op);
-
-class ArithmeticExpresion {
-
- public:
-
-  explicit ArithmeticExpresion(int start_number);
-
-  void AddOperations(const Operation& op);
-
-  std::string FullForm() const;
-  std::string NormalForm() const;
-
- private:
-
-  int GetPriority(const std::string& operation) const;
-
-  std::vector<int> numbers_;
-  std::vector<std::string> operations_;
-
-};
-
-std::istream& operator>>(std::istream& stream, Operation& op) {
-  stream >> op.operation >> op.number;
-  return stream;
-}
-
-ArithmeticExpresion::ArithmeticExpresion(int start_number) {
-  numbers_.push_back(start_number);
-  operations_.emplace_back(" ");
-}
-
-void ArithmeticExpresion::AddOperations(const Operation &op) {
-  numbers_.push_back(op.number);
-  operations_.push_back(op.operation);
-}
-
-std::string ArithmeticExpresion::FullForm() const {
-  std::string output = std::to_string(numbers_[0]);
-  for (size_t i = 1; i < numbers_.size(); ++i) {
-    std::string new_str = "(" + output + ") " + operations_[i] + " " + std::to_string(numbers_[i]);
-    output = new_str;
-  }
-  return output;
-}
-
-std::string ArithmeticExpresion::NormalForm() const {
-  std::string output = std::to_string(numbers_[0]);
-  for (size_t i = 1; i < numbers_.size(); ++i) {
-    std::string new_str;
-    if (GetPriority(operations_[i]) <= GetPriority(operations_[i - 1]) || i == 1) {
-      new_str = output + " " + operations_[i] + " " + std::to_string(numbers_[i]);
-    }
-    else {
-      new_str = "(" + output + ") " + operations_[i] + " " + std::to_string(numbers_[i]);
-    }
-    output = new_str;
-  }
-  return output;
-}
-
-
-int ArithmeticExpresion::GetPriority(const std::string &operation) const {
-  if (operation == "+" || operation == "-") {
+int GetPriority(char operation)  {
+  if (operation == '+' || operation == '-') {
     return 0;
   }
-  else if (operation == "*" || operation == "/") {
+  else if (operation == '*' || operation == '/') {
     return 1;
   }
   else {
-    return -1;
+    return 2;
+  }
+}
+
+std::istream& operator>>(std::istream& s, Operation& op) {
+  s >> op.operation >> op.number;
+  return s;
+}
+
+class ArithmeticExpresion {
+ public:
+  explicit ArithmeticExpresion(int32_t base);
+  void AddOperation(const Operation& op);
+  void Print();
+ private:
+
+  std::deque<char> line_;
+  char prev_char;
+
+  void AddInt(int32_t number);
+};
+
+ArithmeticExpresion::ArithmeticExpresion(int32_t base) {
+  AddInt(base);
+  prev_char = ' ';
+}
+
+void ArithmeticExpresion::AddOperation(const Operation &op) {
+  if (GetPriority(op.operation) > GetPriority(prev_char)) {
+    line_.emplace_front('(');
+    line_.emplace_back(')');
+  }
+  line_.emplace_back(' ');
+  line_.push_back(op.operation);
+  line_.emplace_back(' ');
+  AddInt(op.number);
+  prev_char = op.operation;
+}
+
+void ArithmeticExpresion::Print() {
+  while (line_.size()) {
+    std::cout << line_.front();
+    line_.pop_front();
+  }
+}
+
+void ArithmeticExpresion::AddInt(int32_t number) {
+  if (number < 0) {
+    line_.emplace_back('-');
+    number = abs(number);
+  }
+  std::string str = std::to_string(abs(number));
+  for (const auto& c : str) {
+    line_.push_back(c);
   }
 }
 
 int main() {
-  int basic = 0;
-  std::cin >> basic;
+  int basic, n;
+  std::cin >> basic >> n;
   ArithmeticExpresion ae(basic);
-
-  int n = 0;
-  std::cin >> n;
   for (int i = 0; i < n; ++i) {
-    Operation op;
-    std::cin >> op;
-    ae.AddOperations(op);
+    Operation o;
+    std::cin >> o;
+    ae.AddOperation(o);
   }
-  std::cout << ae.NormalForm() << std::endl;
+  ae.Print();
+  return 0;
 }
