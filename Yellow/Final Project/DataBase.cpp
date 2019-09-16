@@ -45,18 +45,8 @@ Date::Date() {
 }
 
 Date::Date(const std::string &input_date) {
-
   CheckFormat(input_date);
   CheckData();
-
-  if (false) {
-    std::cout << "=======" << std::endl;
-    std::cout << input_date << std::endl;
-    std::cout << "ALL'S GOOD" << std::endl;
-    std::cout << GetDate() << std::endl;
-    std::cout << "=======" << std::endl;
-  }
-
 }
 
 int Date::GetYear() const { return year; }
