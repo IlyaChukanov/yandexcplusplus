@@ -9,24 +9,27 @@
 #include <map>
 #include <string>
 #include <iostream>
+#include <vector>
 
 #include "date.h"
-
-Date ParseDate(std::istream& input) {
-
-}
-
-std::string ParseEvent(std::istream& is) {
-
-}
 
 class Database {
  public:
 
-  void Print(std::ostream& out);
+  void Print(std::ostream& out) const;
+
+  std::string Last(const Date& date) const;
+
+  void Add(const Date& date, const std::string& event);
+
+  template <typename Predicate>
+  int RemoveIf(Predicate predicate);
+
+  template <typename Predicate>
+  std::vector<std::string> FindIf(Predicate predicate);
 
  private:
-  std::map<Date, std::set<std::string>> data_;
+  std::map<Date, std::vector<std::string>> data_;
 };
 
 #endif //SECONDTWEEK_YELLOW_FINAL_PROJECT_DATABASE_H_

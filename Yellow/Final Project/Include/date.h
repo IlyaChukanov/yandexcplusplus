@@ -36,4 +36,5 @@ class Date {
 
 bool operator<(const Date& lhs, const Date& rhs);
 
+std::ostream operator<(std::ostream& ostream, const Date& date);
 #endif //SECONDTWEEK_YELLOW_FINAL_PROJECT_DATE_H_
