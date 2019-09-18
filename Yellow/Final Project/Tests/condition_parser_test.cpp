@@ -1,6 +1,5 @@
 #include "../Include/condition_parser.h"
-#include "test_runner.h"
-
+#include "../../../MyUtils/MyTestFramework/MyTestFramework.h"
 #include <sstream>
 using namespace std;
 
@@ -75,4 +74,8 @@ void TestParseCondition() {
     Assert(!root->Evaluate({2016, 1, 1}, "event"), "Parse condition 29");
     Assert(root->Evaluate({2016, 1, 2}, "event"), "Parse condition 30");
   }
+}
+
+UnitTestList ConditionTest() {
+  
 }

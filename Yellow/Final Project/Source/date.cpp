@@ -48,9 +48,6 @@ void Date::CheckFormat(const std::string &input) {
   std::stringstream ss(input);
   int count_data = 3;
   int date_data[3] = {-1, -1, -1};
-  year = date_data[0];
-  month = date_data[1];
-  day = date_data[2];
 
   if (!CheckNumber(ss, date_data[0])) {
     std::stringstream so;
@@ -86,15 +83,11 @@ void Date::CheckFormat(const std::string &input) {
 }
 
 bool Date::CheckNumber(std::stringstream& ss, int& number) {
-  char sign = '+';
   if (ss.peek() == '+' || ss.peek() == '-') {
-    sign = ss.get();
+    return false;
   }
-  if (ss.peek() >= '0' && ss.peek() <= '9') {
+  else if (ss.peek() >= '0' && ss.peek() <= '9') {
     ss >> number;
-    if (sign == '-') {
-      number = -number;
-    }
   }
   else {
     return false;
@@ -120,4 +113,9 @@ bool operator<(const Date& lhs, const Date& rhs) {
   int l_year = lhs.GetYear(), l_month = lhs.GetMonth(), l_day = lhs.GetDay();
   int r_year = rhs.GetYear(), r_month = rhs.GetMonth(), r_day = rhs.GetDay();
   return (std::tie(l_year, l_month, l_day) < std::tie(r_year, r_month, r_day));
+}
+
+std::ostream& operator<(std::ostream& ostream, const Date& date) {
+  ostream << date.GetDate();
+  return ostream;
 }

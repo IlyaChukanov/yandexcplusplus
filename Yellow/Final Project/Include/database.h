@@ -26,7 +26,7 @@ class Database {
   int RemoveIf(Predicate predicate);
 
   template <typename Predicate>
-  std::vector<std::string> FindIf(Predicate predicate);
+  std::vector<std::string> FindIf(Predicate predicate) const;
 
  private:
   std::map<Date, std::vector<std::string>> data_;

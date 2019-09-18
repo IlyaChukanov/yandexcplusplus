@@ -6,7 +6,7 @@
 
 bool EmptyNode::Evaluate(const Date &date, const std::string &event) {
   std::stringstream s;
-  s << "Evaluate empty node. " << "Date: " << date << " Event: " << event;
+  s << "Evaluate empty node. " << "Date: " << date.GetDate() << " Event: " << event;
   throw std::logic_error(s.str());
 }
 

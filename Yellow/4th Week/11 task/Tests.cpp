@@ -2,7 +2,7 @@
 // Created by ilya on 12.09.2019.
 //
 
-#include "../../../MyUtils/MyTestFramework.h"
+#include "../../../MyUtils/MyTestFramework/MyTestFramework.h"
 #include "ArithmeticExpresion.h"
 
 UnitTestList FullExpr() {

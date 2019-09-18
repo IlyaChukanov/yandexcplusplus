@@ -4,6 +4,19 @@
 
 using namespace std;
 
+Date ParseDate(std::istream& input) {
+  std::string bufer;
+  input >> bufer;
+  input.get();
+  return Date(bufer);
+}
+
+std::string ParseEvent(std::istream& input) {
+  std::string event;
+  std::getline(input, event, '\"');
+  return event;
+}
+
 template <class It> shared_ptr<Node> ParseComparison(It& current, It end) {
   if (current == end) {
     throw logic_error("Expected column name: date or event");

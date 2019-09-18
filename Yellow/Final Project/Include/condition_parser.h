@@ -6,13 +6,9 @@
 #include <memory>
 #include <iostream>
 
-Date ParseDate(std::istream& input) {
+Date ParseDate(std::istream& input);
 
-}
-
-std::string ParseEvent(std::istream& is) {
-
-}
+std::string ParseEvent(std::istream& input);
 
 std::shared_ptr<Node> ParseCondition(std::istream& is);
 
