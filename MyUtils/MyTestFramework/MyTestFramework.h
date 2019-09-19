@@ -193,7 +193,6 @@ class UnitTestList {
 
 };
 
-// TODO Не работает в тестовой системе, что-то с ним не так. Не знаю что.
 class UnitTestManager {
  public:
   UnitTestManager() : good_tests(0), fail_tests(0) {};
