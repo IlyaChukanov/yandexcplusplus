@@ -35,3 +35,6 @@
 .*
 CMakeLists.txt
 cmake-*
+
+# GoogleTest source code
+googletest

@@ -12,6 +12,7 @@ class Date {
  public:
   Date();
   explicit Date(const std::string& input_date);
+  Date(int year, int month, int day);
 
   int GetYear() const;
   int GetMonth() const;
@@ -22,9 +23,9 @@ class Date {
   std::string GetDate(char separator = '-') const;
 
  private:
-  int year;
-  int month;
-  int day;
+  int year_;
+  int month_;
+  int day_;
 
   // Проверка формата
   void CheckFormat(const std::string& input);

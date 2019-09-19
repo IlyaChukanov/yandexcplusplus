@@ -6,10 +6,12 @@
 #include <iostream>
 #include <stdexcept>
 
+#define CONFIG_CATCH_MAIN
+
 using namespace std;
 
 int main() {
-  TestAll();
+  //TestAll();
 
   Database db;
 
@@ -61,6 +63,7 @@ int main() {
   return 0;
 }
 
+/*
 void TestParseEvent() {
   {
     istringstream is("event");
@@ -78,3 +81,4 @@ void TestParseEvent() {
     AssertEqual(events, vector<string>{"first event  ", "second event"}, "Parse multiple events");
   }
 }
+*/

@@ -27,6 +27,7 @@ enum class LogicalOperation {
 template <typename ToCompare>
 bool Compare(Comparison cmp, const ToCompare& left, const ToCompare& right) {
   switch (cmp) {
+    // TODO Реализовать все операторы для сравнений дат
     case Comparison::Less: {
       return left < right;
     }
