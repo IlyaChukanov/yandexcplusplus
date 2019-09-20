@@ -7,4 +7,4 @@
 - Кориченевый пояс: не начат
 - Черный пояс: не начат
 
-Для юнит тестов используется [Catch2](https://github.com/catchorg/Catch2)
+Для юнит тестов используется [Google Test](https://github.com/google/googletest)

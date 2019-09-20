@@ -7,7 +7,7 @@
 #include <tuple>
 #include <iomanip>
 
-#include "../Include/date.h"
+#include "date.h"
 
 Date::Date() : year_(0), month_(0), day_(0) {}
 
@@ -119,7 +119,38 @@ bool operator<(const Date& lhs, const Date& rhs) {
   return (std::tie(l_year, l_month, l_day) < std::tie(r_year, r_month, r_day));
 }
 
+bool operator<=(const Date& lhs, const Date& rhs) {
+  int l_year = lhs.GetYear(), l_month = lhs.GetMonth(), l_day = lhs.GetDay();
+  int r_year = rhs.GetYear(), r_month = rhs.GetMonth(), r_day = rhs.GetDay();
+  return (std::tie(l_year, l_month, l_day) <= std::tie(r_year, r_month, r_day));
+}
+
+bool operator>(const Date& lhs, const Date& rhs) {
+  int l_year = lhs.GetYear(), l_month = lhs.GetMonth(), l_day = lhs.GetDay();
+  int r_year = rhs.GetYear(), r_month = rhs.GetMonth(), r_day = rhs.GetDay();
+  return (std::tie(l_year, l_month, l_day) > std::tie(r_year, r_month, r_day));
+}
+
+bool operator>=(const Date& lhs, const Date& rhs) {
+  int l_year = lhs.GetYear(), l_month = lhs.GetMonth(), l_day = lhs.GetDay();
+  int r_year = rhs.GetYear(), r_month = rhs.GetMonth(), r_day = rhs.GetDay();
+  return (std::tie(l_year, l_month, l_day) >= std::tie(r_year, r_month, r_day));
+}
+
+bool operator==(const Date& lhs, const Date& rhs) {
+  int l_year = lhs.GetYear(), l_month = lhs.GetMonth(), l_day = lhs.GetDay();
+  int r_year = rhs.GetYear(), r_month = rhs.GetMonth(), r_day = rhs.GetDay();
+  return (std::tie(l_year, l_month, l_day) == std::tie(r_year, r_month, r_day));
+}
+
+bool operator!=(const Date& lhs, const Date& rhs) {
+  int l_year = lhs.GetYear(), l_month = lhs.GetMonth(), l_day = lhs.GetDay();
+  int r_year = rhs.GetYear(), r_month = rhs.GetMonth(), r_day = rhs.GetDay();
+  return (std::tie(l_year, l_month, l_day) != std::tie(r_year, r_month, r_day));
+}
+
 std::ostream& operator<(std::ostream& ostream, const Date& date) {
   ostream << date.GetDate();
   return ostream;
 }
+

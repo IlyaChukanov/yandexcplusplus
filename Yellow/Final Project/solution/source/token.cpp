@@ -1,4 +1,4 @@
-#include "../Include/token.h"
+#include "token.h"
 
 #include <stdexcept>
 

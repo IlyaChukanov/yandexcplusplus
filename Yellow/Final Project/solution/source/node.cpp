@@ -2,7 +2,7 @@
 // Created by ilya on 15.09.2019.
 //
 
-#include "../Include/node.h"
+#include "node.h"
 
 bool EmptyNode::Evaluate(const Date &date, const std::string &event) {
   std::stringstream s;

@@ -1,17 +1,14 @@
-#include "Include/database.h"
-#include "Include/date.h"
-#include "Include/condition_parser.h"
-#include "Include/node.h"
+#include "database.h"
+#include "date.h"
+#include "condition_parser.h"
 
 #include <iostream>
 #include <stdexcept>
 
-#define CONFIG_CATCH_MAIN
-
 using namespace std;
 
 int main() {
-  //TestAll();
+
 
   Database db;
 
