@@ -48,7 +48,7 @@ std::string Date::GetDate(char separator) const {
 }
 
 
-void Date::CheckFormat(const std::string &input) {
+void Date::CheckFormat(const std::string &input, char separator) {
   std::stringstream ss(input);
   int count_data = 3;
   int date_data[3] = {-1, -1, -1};
@@ -61,7 +61,7 @@ void Date::CheckFormat(const std::string &input) {
 
   char input_date_separator = '-';
   for (int i = 1; i < count_data; ++i) {
-    if (ss.peek() != input_date_separator) {
+    if (ss.peek() != separator) {
       std::stringstream so;
       so << "Wrong date format: " << input;
       throw std::runtime_error(so.str());
@@ -100,6 +100,13 @@ bool Date::CheckNumber(std::stringstream& ss, int& number) {
 }
 
 void Date::CheckData() {
+
+  if (year_ < 0) {
+    std::stringstream ss;
+    ss << "Year value is invalid: " << month_;
+    throw std::runtime_error(ss.str());
+  }
+
   if (month_ < 1 || month_ > 12) {
     std::stringstream ss;
     ss << "Month value is invalid: " << month_;
@@ -149,7 +156,7 @@ bool operator!=(const Date& lhs, const Date& rhs) {
   return (std::tie(l_year, l_month, l_day) != std::tie(r_year, r_month, r_day));
 }
 
-std::ostream& operator<(std::ostream& ostream, const Date& date) {
+std::ostream& operator<<(std::ostream& ostream, const Date& date) {
   ostream << date.GetDate();
   return ostream;
 }
