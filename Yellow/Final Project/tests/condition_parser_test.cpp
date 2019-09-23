@@ -5,6 +5,8 @@
 
 #include "condition_parser.h"
 
+// Тесты на разбор выражений так же включают в себя тесты на
+
 TEST(ParseCondionTest, Test1) {
   std::istringstream is("date != 2017-11-18");
   std::shared_ptr<Node> root = ParseCondition(is);
