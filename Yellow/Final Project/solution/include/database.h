@@ -11,6 +11,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <queue>
 
 #include "date.h"
 
@@ -39,14 +40,13 @@ class Database {
     int count = 0;
     for (auto& date : data_) {
       auto new_predicate = [date, predicate](const std::string& event) { return predicate(date.first, event);};
-      count += date.second.size();
-      date.second.erase( std::remove_if(date.second.begin(), date.second.end(), new_predicate), date.second.end());
-      count -= date.second.size();
-      if (data_.count(date.first)) {
-        if (data_.at(date.first).empty()) {
-          data_.erase(date.first);
-        }
-      }
+      auto start = std::remove_if(date.second.begin(), date.second.end(), new_predicate);
+      count += date.second.end() - start;
+      date.second.erase(start, date.second.end());
+    }
+    for(auto it = data_.begin(); it != data_.end(); ) {
+      if(it->second.empty()) it = data_.erase(it);
+      else ++it;
     }
     return count;
   }

@@ -13,6 +13,9 @@ Date ParseDate(std::istream& input) {
 
 std::string ParseEvent(std::istream& input) {
   std::string event;
+  while (input.peek() == ' ') {
+    input.get();
+  }
   std::getline(input, event, '\"');
   return event;
 }
