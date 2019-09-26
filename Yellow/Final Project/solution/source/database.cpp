@@ -9,7 +9,7 @@
 
 void Database::Print(std::ostream &out) const {
   for (const auto& date : data_) {
-    for (const auto& event : date.second) {
+    for (const auto& event : date.second.data_vector) {
       out << date.first.GetDate() << " " << event << std::endl;
     }
   }
@@ -22,20 +22,13 @@ std::string Database::Last(const Date &date) const {
   }
   else {
     last = prev(last);
-    return last->first.GetDate() + " " + last->second.back();
+    return last->first.GetDate() + " " + last->second.data_vector.back();
   }
 }
 
 void Database::Add(const Date &date, const std::string &event) {
-  if (data_.count(date)) {
-    auto container = data_.at(date);
-    auto repeat = std::find(container.begin(), container.end(), event);
-    if (repeat == container.end()) {
-      data_.at(date).push_back(event);
-    }
-  }
-  else {
-    data_[date].push_back(event);
+  auto result = data_[date].data_set.insert(event);
+  if (result.second) {
+    data_[date].data_vector.push_back(event);
   }
 }
-

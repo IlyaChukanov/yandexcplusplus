@@ -25,7 +25,7 @@ class Database {
   std::vector<std::string> FindIf(Predicate predicate) const {
     std::vector<std::string> result;
     for (const auto& date : data_) {
-      for (const auto& event : date.second) {
+      for (const auto& event : date.second.data_vector) {
         if (predicate(date.first, event)) {
           std::string bufer = date.first.GetDate() + " " + event;
           result.push_back(bufer);
@@ -38,15 +38,33 @@ class Database {
   template <typename Predicate>
   int RemoveIf(Predicate predicate) {
     int count = 0;
-    for (auto& date : data_) {
-      auto new_predicate = [date, predicate](const std::string& event) { return predicate(date.first, event);};
-      auto start = std::remove_if(date.second.begin(), date.second.end(), new_predicate);
-      count += date.second.end() - start;
-      date.second.erase(start, date.second.end());
-    }
-    for(auto it = data_.begin(); it != data_.end(); ) {
-      if(it->second.empty()) it = data_.erase(it);
-      else ++it;
+    for(auto date = data_.begin(); date != data_.end(); ) {
+      // Удаление записи, если при данной дате условие TRUE в независимости от события
+      if (predicate(date->first, "")) {
+        count += date->second.data_vector.size();
+        date = data_.erase(date);
+      }
+      else {
+        auto new_predicate = [date, predicate](const std::string& event) { return !predicate(date->first, event);};
+        auto start = std::stable_partition(date->second.data_vector.begin(), date->second.data_vector.end(), new_predicate);
+        // Удаление всего массива, если он полностью соответствует условию
+        if (start == date->second.data_vector.begin()) {
+          count += date->second.data_vector.size();
+          date = data_.erase(date);
+        }
+        else if (start != date->second.data_vector.end()) {
+          for (auto curr = --date->second.data_vector.end(); curr != prev(start); curr--) {
+            date->second.data_vector.pop_back();
+            date->second.data_set.erase(*curr);
+            count++;
+          }
+          if(date->second.data_vector.empty()) date = data_.erase(date);
+          else ++date;
+        }
+        else {
+          ++date;
+        }
+      }
     }
     return count;
   }
@@ -54,7 +72,13 @@ class Database {
   std::string Last(const Date& date) const;
 
  private:
-  std::map<Date, std::vector<std::string>> data_;
+
+  struct Events {
+    std::vector<std::string> data_vector;
+    std::set<std::string> data_set;
+  };
+
+  std::map<Date, Events> data_;
 };
 
 #endif //SECONDTWEEK_YELLOW_FINAL_PROJECT_DATABASE_H_

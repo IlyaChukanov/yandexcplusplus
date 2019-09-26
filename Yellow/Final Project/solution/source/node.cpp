@@ -12,6 +12,10 @@ DateComparisonNode::DateComparisonNode(Comparison cmp, const Date &date)
     : cmp_(cmp), date_(date) {}
 
 bool DateComparisonNode::Evaluate(const Date &date, const std::string &event) {
+  Date d;
+  if (date.GetDate() == d.GetDate()) {
+    return false;
+  }
   return Compare(cmp_, date, date_);
 }
 
@@ -19,6 +23,9 @@ EventComparisonNode::EventComparisonNode(Comparison cmp, const std::string &even
     : cmp_(cmp), event_(event) {}
 
 bool EventComparisonNode::Evaluate(const Date &date, const std::string &event) {
+  if (event.empty()) {
+    return false;
+  }
   return Compare(cmp_, event, event_);
 }
 
