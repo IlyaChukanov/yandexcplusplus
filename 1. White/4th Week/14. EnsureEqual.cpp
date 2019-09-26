@@ -21,7 +21,7 @@ void EnsureEqual(const string& left, const string& right) {
 int main() {
   try {
     EnsureEqual("C++ White", "C++ White");
-    EnsureEqual("C++ White", "C++ Yellow");
+    EnsureEqual("C++ White", "C++ 2. Yellow");
   } catch (runtime_error& e) {
     cout << e.what() << endl;
   }
