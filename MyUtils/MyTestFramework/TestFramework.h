@@ -102,11 +102,11 @@ class TestRunner {
   int fail_count = 0;
 };
 
-#define ASSERT_EQUAL(x, y) {            \
-  ostringstream os;                     \
-  os << #x << " != " << #y << ", "      \
-    << __FILE__ << ":" << __LINE__;     \
-  AssertEqual(x, y, os.str());          \
+#define ASSERT_EQUAL(x, y) {                                  \
+  ostringstream ae__uniq_string_stream__;                     \
+  ae__uniq_string_stream__ << #x << " != " << #y << ", "      \
+    << __FILE__ << ":" << __LINE__;                           \
+  AssertEqual(x, y, ae__uniq_string_stream__.str());          \
 }
 
 #define ASSERT(x) {                     \
