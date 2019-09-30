@@ -8,12 +8,15 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
 
+
+// TODO Снова просмотреть решение
 class RouteManager {
  public:
   void AddRoute(int start, int finish) {
-    reachable_lists_[start].push_back(finish);  // O(log N)
-    reachable_lists_[finish].push_back(start);  // O(log N)
+    reachable_lists_[start].insert(finish);  // O(log N) + O(log N)
+    reachable_lists_[finish].insert(start);  // O(log N) + O(log N)
   }
 
   int FindNearestFinish(int start, int finish) const {
@@ -21,17 +24,18 @@ class RouteManager {
     if (reachable_lists_.count(start) < 1) {    // O(log N)
       return result;
     }
-    const std::vector<int>& reachable_stations = reachable_lists_.at(start);
-    if (!reachable_stations.empty()) {
-      result = std::min(result, abs(finish - *min_element(begin(reachable_stations), end(reachable_stations),
-              [finish](int lhs, int rhs) { return abs(lhs - finish) < abs(rhs - finish); }
-          ))    // O(N)
-      );
+    const std::set<int>& reachable_stations = reachable_lists_.at(start);
+    const auto finish_pos = reachable_stations.lower_bound(finish);
+    if (finish_pos != end(reachable_stations)) {
+      result = std::min(result, abs(finish - *finish_pos));
+    }
+    if (finish_pos != begin(reachable_stations)) {
+      result = std::min(result, abs(finish - *prev(finish_pos)));
     }
     return result;
   }
  private:
-  std::map<int, std::vector<int>> reachable_lists_;
+  std::map<int, std::set<int>> reachable_lists_;
 };
 
 int main() {
