@@ -41,8 +41,7 @@ public:
     const int page_count = user_page_counts_[user_id];
     int position = user_positions_[user_id];
     // O(N)
-    while (position < user_count &&
-           user_page_counts_[sorted_users_[position]] == page_count) {
+    while (position < user_count && user_page_counts_[sorted_users_[position]] == page_count) {
       ++position;
     }
     if (position == user_count) {
@@ -79,10 +78,59 @@ private:
 };
 
 class MyReadingManager {
+  struct PersonInfo {
+    int person_before_;
+    int curr_reading_;
+  };
  public:
+  MyReadingManager() : page_for_user_(MAX_USER_COUNT_ + 1, 0), users_for_page_(MAX_PAGE_COUNT_ + 1, {0, 0}), user_count(0) {}
+  void Read(int user_id, int page_count) {
+    int curr_page = page_for_user_[user_id];
+    if (curr_page != 0) {
+      users_for_page_[curr_page].curr_reading_ -= 1;
+      user_count--;
+    }
+    users_for_page_[page_count].curr_reading_ += 1;
+    page_for_user_[user_id] = page_count;
+    user_count++;
+    UpdateData();
+  }
 
+  double Cheer(int user_id) const {
+    if (page_for_user_[user_id] == 0) {
+      return 0;
+    }
+    if (user_count == 1) {
+      return 1;
+    }
+    const int page_count = page_for_user_[user_id];
+    int count = users_for_page_[page_count].person_before_;
+    if (count == user_count) {
+      return 0;
+    }
+    return (count) * 1.0 / (user_count - 1);
+  }
  private:
-  std::map<int, std::set<int>> progress_for_users_;
+  static const int MAX_USER_COUNT_ = 100'000;
+  static const int MAX_PAGE_COUNT_ = 1'000;
+
+  void UpdateData() {
+    int last_index = 0;
+    for (int i = 1; i < MAX_PAGE_COUNT_ + 1; ++i) {
+      if (users_for_page_[i].curr_reading_) {
+        users_for_page_[i].person_before_ = users_for_page_[last_index].curr_reading_ +
+            users_for_page_[last_index].person_before_;
+        last_index = i;
+      }
+    }
+  }
+
+  // Хранит число людей остановившихся на этой странице и число людей до этой страницы
+  // Записи отсортированы по возрастанию количества страниц
+  std::vector<PersonInfo> users_for_page_;
+  // Для каждого человека хранит текущую страницу
+  std::vector<int> page_for_user_;
+  size_t user_count;
 };
 
 int main() {
@@ -92,7 +140,7 @@ int main() {
   ios::sync_with_stdio(false);
   cin.tie(nullptr);
 
-  ReadingManager manager;
+  MyReadingManager manager;
 
   int query_count;
   cin >> query_count;
