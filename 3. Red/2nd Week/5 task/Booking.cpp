@@ -9,22 +9,42 @@
 #include <map>
 #include <set>
 
-struct Hotel {
+struct Record {
+  Record()= default;
+  int64_t time = 0;
+  std::string name_hotel;
+  int32_t client_id = 0;
+  int32_t rooms_count = 0;
+};
+
+struct PointToEvent {
+  std::list<Record>::iterator event;
+  int32_t rooms;
+};
+
+class Hotel {
  public:
   Hotel() : clients_(), rooms_(0) {}
 
-  void BookClient(int32_t client_id, int32_t rooms) {
+  void BookClient(int32_t client_id, int32_t rooms, std::list<Record>::iterator iterator) {
     rooms_ += rooms;
-    clients_[client_id] = rooms;
+    auto& ref = clients_[client_id];
+    ref.event = iterator;
+    ref.rooms = rooms;
   }
 
   void RemoveClient(int32_t client_id) {
-    rooms_ -= clients_[client_id];
+    auto& ref = clients_[client_id];
+    rooms_ -= ref.event;
     clients_.erase(client_id);
   }
 
   bool CheckClient(int32_t client_id) {
     return clients_.count(client_id);
+  }
+
+  bool CheckAndRemove(int32_t client_id) {
+
   }
 
   int32_t GetClients() const {
@@ -36,15 +56,11 @@ struct Hotel {
   }
 
  private:
-  std::map<int32_t, int32_t> clients_;
+  std::map<int32_t, PointToEvent> clients_;
   int32_t rooms_;
 };
 
-struct Record {
-  Record() : record_data(), time(0) {}
-  std::map<std::string, Hotel> record_data;
-  int64_t time;
-};
+
 
 class BookingManager {
  public:
