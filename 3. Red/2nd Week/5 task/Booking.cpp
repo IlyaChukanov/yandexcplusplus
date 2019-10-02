@@ -17,91 +17,61 @@ struct Record {
   int32_t rooms_count = 0;
 };
 
-struct PointToEvent {
-  std::list<Record>::iterator event;
-  int32_t rooms;
-};
-
 class Hotel {
  public:
   Hotel() : clients_(), rooms_(0) {}
 
-  void BookClient(int32_t client_id, int32_t rooms, std::list<Record>::iterator iterator) {
+  void BookClient(int32_t client_id, int32_t rooms) {
     rooms_ += rooms;
-    auto& ref = clients_[client_id];
-    ref.event = iterator;
-    ref.rooms = rooms;
+    clients_[client_id].push_back(rooms);
   }
 
-  void RemoveClient(int32_t client_id) {
-    auto& ref = clients_[client_id];
-    rooms_ -= ref.event;
-    clients_.erase(client_id);
-  }
-
-  bool CheckClient(int32_t client_id) {
-    return clients_.count(client_id);
-  }
-
-  bool CheckAndRemove(int32_t client_id) {
-
+  bool Remove(int32_t client_id) {
+    auto find = clients_.find(client_id);
+    if (find == clients_.end()) {
+      return false;
+    }
+    if (!find->second.empty()) {
+      rooms_ -= find->second.front();
+      find->second.pop_front();
+    }
+    if (find->second.empty()) {
+      clients_.erase(find);
+    }
+    return true;
   }
 
   int32_t GetClients() const {
     return clients_.size();
   }
 
-  int32_t GerRooms() const {
+  int32_t GetRooms() const {
     return rooms_;
   }
 
  private:
-  std::map<int32_t, PointToEvent> clients_;
+  std::map<int32_t, std::list<int32_t>> clients_;
   int32_t rooms_;
 };
-
-
 
 class BookingManager {
  public:
   BookingManager() = default;
-  void Book(int64_t time, const std::string& hotel_name, int32_t client_id, uint32_t room_count) {
-    if (CheckRecordTime(time)) {
-      Record& r_ref = records_.back();
-      Hotel& h_ref = r_ref.record_data[hotel_name];
-      if (h_ref.CheckClient(client_id)) {
-        h_ref.RemoveClient(client_id);
-      }
-      h_ref.BookClient(client_id, room_count);
-    }
-    else {
-      Record r;
-      r.time = time;
-      Hotel& h_ref = r.record_data[hotel_name];
-      h_ref.BookClient(client_id, room_count);
-      records_.push_back(r);
-    }
-    Update();
+  void Book(int64_t time, const std::string& hotel_name, int32_t client_id, int32_t room_count) {
+    Record r = {time, hotel_name, client_id, room_count};
+    records_.push_back(r);
+    hotels_[hotel_name].BookClient(client_id, room_count);
+    UpdateRecords();
   }
 
   int32_t Clients(const std::string& hotel_name) const {
-    int32_t result = 0;
-    for (const auto& record : records_) {
-      if (record.record_data.count(hotel_name)) {
-        result += record.record_data.at(hotel_name).GetClients();
-      }
-    }
-    return result;
+    auto find = hotels_.find(hotel_name);
+    return (find == hotels_.end()) ? 0 : find->second.GetClients();
   }
 
-  uint32_t Rooms(const std::string& hotel_name) {
-    int32_t result = 0;
-    for (const auto& record : records_) {
-      if (record.record_data.count(hotel_name)) {
-        result += record.record_data.at(hotel_name).GerRooms();
-      }
-    }
-    return result;
+  int32_t Rooms(const std::string& hotel_name) {
+    auto find = hotels_.find(hotel_name);
+    return (find == hotels_.end()) ? 0 : find->second.GetRooms();
   }
 
  private:
@@ -109,9 +79,11 @@ class BookingManager {
   std::list<Record> records_;
   std::map<std::string, Hotel> hotels_;
 
-  void Update() {
-    for (auto record = records_.begin(); record != records_.end(); ++record) {
+  void UpdateRecords() {
+    for (auto record = records_.begin(); record != records_.end();) {
       if (!CheckRecordTime(record->time)) {
+        auto for_delete = records_.front();
+        hotels_[for_delete.name_hotel].Remove(for_delete.client_id);
         record = records_.erase(records_.begin());
       }
       else {
@@ -120,16 +92,13 @@ class BookingManager {
     }
   }
 
-  void UpdateData() {
-    auto for_delete = records_.front();
-  }
-
   bool CheckRecordTime(int32_t time) {
     int32_t current_time = records_.back().time;
     return ((current_time - PERIOD_TIME) < time) && (time <= current_time);
   }
 
 };
+
 
 int main() {
   std::cin.tie(nullptr);
