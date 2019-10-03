@@ -44,7 +44,6 @@ class LinkedList {
     node->next = new_node;
   }
 
-
   void RemoveAfter(Node* node) {
     if (!node) {
       PopFront();
