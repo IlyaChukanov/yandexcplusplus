@@ -51,14 +51,14 @@ class SimpleVector {
     return capacity_;
   }
 
-  void PushBack(const T& value) {
+  void PushBack(T value) {
     if (!capacity_) {
       Resize(1);
     }
     else if (capacity_ == size_) {
       Resize(capacity_*2);
     }
-    *end_ = value;
+    *end_ = std::move(value);
     size_++;
     end_++;
   }
@@ -69,7 +69,7 @@ class SimpleVector {
     size_t old_size = size_;
     capacity_ = new_size;
     for (size_t i = 0; i < size_; ++i) {
-      temp_data[i] = data_[i];
+      temp_data[i] = std::move(data_[i]);
     }
     delete[] data_;
     data_ = temp_data;
