@@ -81,6 +81,7 @@ class PriorityCollection {
     auto iter_to_last = prior_to_id.rbegin()->second.rbegin();
     auto result = std::make_pair(std::move(id_to_objects_[*(iter_to_last)].data_),
                                  prior_to_id.rbegin()->first);
+
     id_to_objects_[*(iter_to_last)].priority_ = -1;
     prior_to_id.rbegin()->second.erase(prev(prior_to_id.rbegin()->second.end()));
     if (prev(prior_to_id.end())->second.empty()) {
@@ -101,91 +102,78 @@ class PriorityCollection {
 
 
 /*
+#include <algorithm>
+#include <iostream>
+#include <iterator>
+#include <memory>
+#include <set>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
 template <typename T>
 class PriorityCollection {
- public:
-  using Id = size_t;
+public:
+  using Id = int;
 
-  // Добавить объект с нулевым приоритетом
-  // с помощью перемещения и вернуть его идентификатор
   Id Add(T object) {
-    auto find = priority_data_.find(0);
-    if (find == priority_data_.end()) {
-      auto insert = priority_data_.insert(std::make_pair(0, std::vector<Node>())).first;
-      id_to_iter_.push_back(insert);
-      insert->second.push_back(Node{id_to_iter_.size() - 1, std::move(object)});
-    }
-    else {
-      id_to_iter_.push_back(find);
-      find->second.push_back(Node{id_to_iter_.size() - 1, std::move(object)});
-    }
-    return id_to_iter_.size() - 1;
+    const Id new_id = objects.size();
+    objects.push_back({move(object)});
+    sorted_objects.insert({0, new_id});
+    return new_id;
   }
 
-  // Добавить все элементы диапазона [range_begin, range_end)
-  // с помощью перемещения, записав выданные им идентификаторы
-  // в диапазон [ids_begin, ...)
   template <typename ObjInputIt, typename IdOutputIt>
   void Add(ObjInputIt range_begin, ObjInputIt range_end,
            IdOutputIt ids_begin) {
-    for (auto cur = range_begin; cur != range_end; ++cur, ++ids_begin) {;
-      *ids_begin = Add(*cur);
+    while (range_begin != range_end) {
+      *ids_begin++ = Add(move(*range_begin++));
     }
   }
 
-  // Определить, принадлежит ли идентификатор какому-либо
-  // хранящемуся в контейнере объекту
   bool IsValid(Id id) const {
-    return id_to_iter_[id] != priority_data_.end();
+    return id >= 0 && id < objects.size() &&
+        objects[id].priority != NONE_PRIORITY;
   }
 
-  // Получить объект по идентификатору
   const T& Get(Id id) const {
-    return id_to_iter_[id]->second.back().data_;
+    return objects[id].data;
   }
 
-  // Увеличить приоритет объекта на 1
   void Promote(Id id) {
-    auto curr_iter = id_to_iter_[id];
-    typename std::map<int, std::vector<Node>>::iterator find = priority_data_.find(curr_iter->first + 1);
-    if (find == priority_data_.end()) {
-      auto insert = priority_data_.insert(std::make_pair(curr_iter->first + 1, std::vector<Node>())).first;
-      insert->second.push_back(std::move(curr_iter->second.back()));
-      curr_iter->second.pop_back();
-      id_to_iter_[id] = insert;
-    }
-    else {
-      find->second.push_back(std::move(curr_iter->second.back()));
-      curr_iter->second.pop_back();
-      id_to_iter_[id] = find;
-    }
-    if (priority_data_[curr_iter->first].empty()) {
-      priority_data_.erase(curr_iter);
-    }
+    auto& item = objects[id];
+    const int old_priority = item.priority;
+    const int new_priority = ++item.priority;
+    sorted_objects.erase({old_priority, id});
+    sorted_objects.insert({new_priority, id});
   }
 
-  // Получить объект с максимальным приоритетом и его приоритет
-  std::pair<const T&, int> GetMax() const {
-    return {priority_data_.end()->second.back().data_, priority_data_.end()->first};
+  pair<const T&, int> GetMax() const {
+    const auto& item = objects[prev(sorted_objects.end())->second];
+    return {item.data, item.priority};
   }
 
-  // Аналогично GetMax, но удаляет элемент из контейнера
-  std::pair<T, int> PopMax() {
-    T first = std::move(priority_data_.end()->second.back().data_);
-    int ind = priority_data_.end()->first;
-    id_to_iter_[priority_data_.end()->second.back().id_] = priority_data_.end();
-    priority_data_.end()->second.pop_back();
+  pair<T, int> PopMax() {
+    const auto sorted_objects_it = prev(sorted_objects.end());
+    auto& item = objects[sorted_objects_it->second];
+    sorted_objects.erase(sorted_objects_it);
+    const int priority = item.priority;
+    item.priority = NONE_PRIORITY;
+    return {move(item.data), priority};
   }
 
- private:
-
-  struct Node {
-    Id id_;
-    T data_;
+private:
+  struct ObjectItem {
+    T data;
+    int priority = 0;
   };
+  static const int NONE_PRIORITY = -1;
 
-  std::vector<typename std::map<int, std::vector<Node>>::iterator> id_to_iter_;
-  std::map<int, std::vector<Node>> priority_data_;
+  vector<ObjectItem> objects;
+  set<pair<int, Id>> sorted_objects;
+};
+
 };
 */
 #endif //YANDEXCPLUSPLUS_3_RED_5TH_WEEK_7_TASK_PRIORITY_COLLECTION_H_
