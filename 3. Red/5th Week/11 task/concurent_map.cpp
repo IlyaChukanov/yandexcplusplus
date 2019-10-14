@@ -29,6 +29,7 @@ class ConcurrentMap {
     if (!std::numeric_limits<K>::is_signed) {
       is_unsigned = true;
     }
+
   }
 
   Access operator[](const K& key) {
@@ -47,9 +48,47 @@ class ConcurrentMap {
     size_t map_index;
     int64_t border;
   };
+
   std::vector<Interval> map_indexes_;
   std::vector<std::map<K, V>> maps_;
+  std::vector<std::mutex> maps_mutex;
   bool is_unsigned = false;
+
+  void CreateUnsignedMap() {
+    maps_.resize(BUCKET_COUNT);
+    maps_mutex.resize(BUCKET_COUNT);
+    // Установка левых границ для всех интервалов исключая последний
+    for (size_t i = 1; i < BUCKET_COUNT; ++i) {
+      map_indexes_.push_back(Interval{i - 1, i * KEY_STEP});
+    }
+    // Установка максимальной левой границы для последнего интервала
+    map_indexes_.push_back(Interval{{BUCKET_COUNT - 1, std::numeric_limits<K>::max()}});
+  }
+
+  void CreateSignedMap() {
+    maps_.resize(BUCKET_COUNT);
+    maps_mutex.resize(BUCKET_COUNT);
+    // Интервалы вида -inf...N*(-KEY_STEP)...2*(-KEY_STEP)...1*(-KEY_STEP)...1/2*(-KEY_STEP)..0..1/2*KEY_STOP...1*(-KEY_STEP)...2*(-KEY_STEP)...N*(-KEY_STEP)...+inf
+    // Различаются для четного и нечетного BUCKET_COUNT
+
+
+    if (BUCKET_COUNT == 1) {
+      map_indexes_.push_back(Interval{{BUCKET_COUNT - 1, std::numeric_limits<K>::max()}});
+    }
+    else {
+      // negative_count - количество map для отрицательного диапазона чисел
+      // middle count - в случае если число map нечетное
+      // positive_count - количество map для не отрицательного диапазона чисел
+      std::array<size_t, 3> counts = {BUCKET_COUNT / 2, BUCKET_COUNT / 2, BUCKET_COUNT % 2};
+
+      for (size_t)
+
+    }
+  }
+
+  void SplitRange(int& neg_count, int& pos_count) {
+
+  }
 };
 
 void RunConcurrentUpdates(
