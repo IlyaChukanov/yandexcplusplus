@@ -12,8 +12,36 @@
 #include <random>
 #include <mutex>
 #include <future>
+#include <set>
 
 using namespace std;
+
+struct Interval {
+  int64_t left_border_;
+  int64_t right_border;
+};
+
+template <typename K, typename V>
+struct PartMap {
+  PartMap() = default;
+
+  std::map<K, V> map_;
+  std::mutex m_;
+};
+
+bool operator<(const Interval& lhs, const Interval& rhs) {
+  return lhs.left_border_ < rhs.right_border;
+}
+
+template <typename K>
+bool operator<(const Interval& rhs, K value) {
+  return value <= rhs.right_border && value < rhs.left_border_;
+}
+
+template <typename K>
+bool operator<(K value, const Interval& rhs) {
+  return value <= rhs.right_border && value < rhs.left_border_;
+}
 
 template <typename K, typename V>
 class ConcurrentMap {
@@ -29,7 +57,8 @@ class ConcurrentMap {
     if (!std::numeric_limits<K>::is_signed) {
       is_unsigned = true;
     }
-
+    if (is_unsigned) CreateUnsignedMap();
+    else CreateSignedMap();
   }
 
   Access operator[](const K& key) {
@@ -42,17 +71,44 @@ class ConcurrentMap {
 
  private:
   const size_t BUCKET_COUNT;
-  const size_t KEY_STEP = 10'000;
+  const uint64_t KEY_STEP = 10'000;
+  bool is_unsigned = false;
+  std::map<Interval, PartMap<K, V>, std::less<>> all_maps;
 
-  struct Interval {
-    size_t map_index;
-    int64_t border;
-  };
+  void CreateUnsignedMap() {
+    // Установка левых границ для всех интервалов исключая последний
+    for (size_t i = 1; i < BUCKET_COUNT; ++i) {
+      all_maps[Interval{i - 1 * KEY_STEP, i * KEY_STEP}] = std::move(PartMap<K, V>());
+    }
+    // Установка максимальной левой границы для последнего интервала
+    all_maps.insert({Interval{BUCKET_COUNT - 1 * KEY_STEP, std::numeric_limits<K>::max()}, {}});
+  }
 
-  std::vector<Interval> map_indexes_;
+  void CreateSignedMap() {
+    if (BUCKET_COUNT == 1) {
+      all_maps.insert({Interval{std::numeric_limits<K>::min(), std::numeric_limits<K>::max()}, {}});
+    }
+    else {
+      size_t side_count = BUCKET_COUNT / 2, middle_count = BUCKET_COUNT % 2;
+      int64_t start_step = 0;
+      if (middle_count) {
+        start_step = KEY_STEP / 2;
+        all_maps.insert({Interval{-KEY_STEP, KEY_STEP}, {}});
+      }
+      for (size_t i = 1; i < side_count; ++i) {
+        all_maps.insert({Interval{start_step + (KEY_STEP * i), start_step + (KEY_STEP * (i + 1))}, {}});
+        all_maps.insert({Interval{(-start_step) + (-1 * KEY_STEP * i + 1), (-start_step) + (-1 * KEY_STEP * i)}, {}});
+      }
+      all_maps.insert({Interval{start_step + (KEY_STEP * (side_count)), std::numeric_limits<K>::max()}, {}});
+      all_maps.insert({Interval{std::numeric_limits<K>::min(), start_step + (-1 * KEY_STEP * side_count)}, {}});
+    }
+  }
+
+  /*
+  std::set<Interval> map_indexes_;
   std::vector<std::map<K, V>> maps_;
   std::vector<std::mutex> maps_mutex;
-  bool is_unsigned = false;
+
 
   void CreateUnsignedMap() {
     maps_.resize(BUCKET_COUNT);
@@ -68,9 +124,19 @@ class ConcurrentMap {
   void CreateSignedMap() {
     maps_.resize(BUCKET_COUNT);
     maps_mutex.resize(BUCKET_COUNT);
+    if (BUCKET_COUNT == 1) {
+      map_indexes_.insert(Interval{{BUCKET_COUNT - 1, std::numeric_limits<K>::max()}});
+    }
+    else {
+      size_t negative_count = BUCKET_COUNT / 2, positive_count = BUCKET_COUNT / 2, middle_count = BUCKET_COUNT % 2;
+    }
+  }
+
+  void CreateSignedMap() {
+    maps_.resize(BUCKET_COUNT);
+    maps_mutex.resize(BUCKET_COUNT);
     // Интервалы вида -inf...N*(-KEY_STEP)...2*(-KEY_STEP)...1*(-KEY_STEP)...1/2*(-KEY_STEP)..0..1/2*KEY_STOP...1*(-KEY_STEP)...2*(-KEY_STEP)...N*(-KEY_STEP)...+inf
     // Различаются для четного и нечетного BUCKET_COUNT
-
 
     if (BUCKET_COUNT == 1) {
       map_indexes_.push_back(Interval{{BUCKET_COUNT - 1, std::numeric_limits<K>::max()}});
@@ -79,16 +145,23 @@ class ConcurrentMap {
       // negative_count - количество map для отрицательного диапазона чисел
       // middle count - в случае если число map нечетное
       // positive_count - количество map для не отрицательного диапазона чисел
-      std::array<size_t, 3> counts = {BUCKET_COUNT / 2, BUCKET_COUNT / 2, BUCKET_COUNT % 2};
-
-      for (size_t)
+      size_t negative_count = BUCKET_COUNT / 2, positive_count = BUCKET_COUNT / 2, middle_count = BUCKET_COUNT % 2;
+      float coef = (middle_count) ? 1.5 : 1.0;
+      size_t index_interval = 0;
+      for (size_t i = 0; i < negative_count; ++i) {
+        map_indexes_.push_back(Interval{{index_interval++, -KEY_STEP * coef * (negative_count - i)}});
+      }
+      if (middle_count) {
+        map_indexes_.push_back(Interval{{index_interval++, -KEY_STEP / 2}});
+        map_indexes_.push_back(Interval{{index_interval++, +KEY_STEP / 2}});
+      }
+      else {
+        map_indexes_.push_back(Interval{{index_interval++, 0}});
+      }
 
     }
   }
-
-  void SplitRange(int& neg_count, int& pos_count) {
-
-  }
+   */
 };
 
 void RunConcurrentUpdates(
