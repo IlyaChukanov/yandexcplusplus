@@ -13,34 +13,38 @@
 #include <mutex>
 #include <future>
 #include <set>
+#include <deque>
 
 using namespace std;
 
+template <typename K>
 struct Interval {
-  int64_t left_border_;
-  int64_t right_border;
+  Interval(const K& left_border, const K& right_border) : left_border_(left_border), right_border_(right_border) {}
+  K left_border_;
+  K right_border_;
 };
 
 template <typename K, typename V>
 struct PartMap {
-  PartMap() = default;
+  PartMap(std::mutex& m) : m_(m) {}
 
   std::map<K, V> map_;
-  std::mutex m_;
+  std::mutex& m_;
 };
 
-bool operator<(const Interval& lhs, const Interval& rhs) {
-  return lhs.left_border_ < rhs.right_border;
+template <typename K>
+bool operator<(const Interval<K>& lhs, const Interval<K>& rhs) {
+  return lhs.left_border_ < rhs.right_border_;
 }
 
 template <typename K>
-bool operator<(const Interval& rhs, K value) {
-  return value <= rhs.right_border && value < rhs.left_border_;
+bool operator<(const Interval<K>& rhs, K value) {
+  return rhs.right_border_ <= value && rhs.left_border_ < value;;
 }
 
 template <typename K>
-bool operator<(K value, const Interval& rhs) {
-  return value <= rhs.right_border && value < rhs.left_border_;
+bool operator<(K value, const Interval<K>& rhs) {
+  return value <= rhs.right_border_ && value < rhs.left_border_;
 }
 
 template <typename K, typename V>
@@ -57,111 +61,80 @@ class ConcurrentMap {
     if (!std::numeric_limits<K>::is_signed) {
       is_unsigned = true;
     }
+    mutexes_.resize(BUCKET_COUNT);
     if (is_unsigned) CreateUnsignedMap();
     else CreateSignedMap();
   }
 
   Access operator[](const K& key) {
-
+    auto part_map = all_maps.end();
+    {
+      std::lock_guard(this->am_mutex);
+      part_map = all_maps.find(key);
+    }
+    if (part_map == all_maps.end()) {
+      int a = 5;
+    }
+    std::lock_guard(part_map->second.m_);
+    auto find_key = part_map->second.map_.find(key);
+    auto& map = part_map->second.map_;
+    if (find_key == part_map->second.map_.end()) {
+      auto insert = part_map->second.map_.insert(std::make_pair(key, V()));
+      return Access{insert.first->second, std::lock_guard(part_map->second.m_)};
+    }
+    else {
+      return Access{find_key->second, std::lock_guard(part_map->second.m_)};
+    }
   }
 
   std::map<K, V> BuildOrdinaryMap() {
-
+    std::map<K, V> result;
+    for (auto& [interval, map] : all_maps) {
+      std::lock_guard(map.m_);
+      for (const auto& [key, value] : map.map_) {
+        result[key] = value;
+      }
+    }
+    return result;
   }
 
  private:
   const size_t BUCKET_COUNT;
-  const uint64_t KEY_STEP = 10'000;
+  const K KEY_STEP = 10'000;
   bool is_unsigned = false;
-  std::map<Interval, PartMap<K, V>, std::less<>> all_maps;
+  std::mutex am_mutex;
+  std::map<Interval<K>, PartMap<K, V>, std::less<>> all_maps;
+  std::deque<std::mutex> mutexes_;
 
   void CreateUnsignedMap() {
     // Установка левых границ для всех интервалов исключая последний
     for (size_t i = 1; i < BUCKET_COUNT; ++i) {
-      all_maps[Interval{i - 1 * KEY_STEP, i * KEY_STEP}] = std::move(PartMap<K, V>());
+      all_maps.insert({Interval<K>{i - 1 * KEY_STEP, i * KEY_STEP}, PartMap<K, V>(mutexes_[i - 1])});
     }
     // Установка максимальной левой границы для последнего интервала
-    all_maps.insert({Interval{BUCKET_COUNT - 1 * KEY_STEP, std::numeric_limits<K>::max()}, {}});
+    all_maps.insert({Interval<K>{BUCKET_COUNT - 1 * KEY_STEP, std::numeric_limits<K>::max()}, PartMap<K, V>(mutexes_[BUCKET_COUNT - 1])});
   }
 
   void CreateSignedMap() {
     if (BUCKET_COUNT == 1) {
-      all_maps.insert({Interval{std::numeric_limits<K>::min(), std::numeric_limits<K>::max()}, {}});
+      all_maps.insert({Interval{std::numeric_limits<K>::min(), std::numeric_limits<K>::max()}, PartMap<K, V>(mutexes_[BUCKET_COUNT - 1])});
     }
     else {
       size_t side_count = BUCKET_COUNT / 2, middle_count = BUCKET_COUNT % 2;
-      int64_t start_step = 0;
+      K start_step = 0;
+      size_t curr_mutex = 0;
       if (middle_count) {
         start_step = KEY_STEP / 2;
-        all_maps.insert({Interval{-KEY_STEP, KEY_STEP}, {}});
+        all_maps.insert({Interval<K>{-start_step, start_step}, PartMap<K, V>(mutexes_[curr_mutex++])});
       }
-      for (size_t i = 1; i < side_count; ++i) {
-        all_maps.insert({Interval{start_step + (KEY_STEP * i), start_step + (KEY_STEP * (i + 1))}, {}});
-        all_maps.insert({Interval{(-start_step) + (-1 * KEY_STEP * i + 1), (-start_step) + (-1 * KEY_STEP * i)}, {}});
+      for (size_t i = 0; i < side_count - 1; ++i) {
+        all_maps.insert({Interval<K>{start_step + (KEY_STEP * i), start_step + (KEY_STEP * (i + 1))}, PartMap<K, V>(mutexes_[curr_mutex++])});
+        all_maps.insert({Interval<K>{(-start_step) + (-1 * KEY_STEP * (i + 1)), (-start_step) + (-1 * KEY_STEP * i)}, PartMap<K, V>(mutexes_[curr_mutex++])});
       }
-      all_maps.insert({Interval{start_step + (KEY_STEP * (side_count)), std::numeric_limits<K>::max()}, {}});
-      all_maps.insert({Interval{std::numeric_limits<K>::min(), start_step + (-1 * KEY_STEP * side_count)}, {}});
+      all_maps.insert({Interval<K>{start_step + (KEY_STEP * (side_count - 1)), std::numeric_limits<K>::max()}, PartMap<K, V>(mutexes_[curr_mutex++])});
+      all_maps.insert({Interval<K>{std::numeric_limits<K>::min(), -start_step + (-1 * KEY_STEP * (side_count - 1))}, PartMap<K, V>(mutexes_[curr_mutex++])});
     }
   }
-
-  /*
-  std::set<Interval> map_indexes_;
-  std::vector<std::map<K, V>> maps_;
-  std::vector<std::mutex> maps_mutex;
-
-
-  void CreateUnsignedMap() {
-    maps_.resize(BUCKET_COUNT);
-    maps_mutex.resize(BUCKET_COUNT);
-    // Установка левых границ для всех интервалов исключая последний
-    for (size_t i = 1; i < BUCKET_COUNT; ++i) {
-      map_indexes_.push_back(Interval{i - 1, i * KEY_STEP});
-    }
-    // Установка максимальной левой границы для последнего интервала
-    map_indexes_.push_back(Interval{{BUCKET_COUNT - 1, std::numeric_limits<K>::max()}});
-  }
-
-  void CreateSignedMap() {
-    maps_.resize(BUCKET_COUNT);
-    maps_mutex.resize(BUCKET_COUNT);
-    if (BUCKET_COUNT == 1) {
-      map_indexes_.insert(Interval{{BUCKET_COUNT - 1, std::numeric_limits<K>::max()}});
-    }
-    else {
-      size_t negative_count = BUCKET_COUNT / 2, positive_count = BUCKET_COUNT / 2, middle_count = BUCKET_COUNT % 2;
-    }
-  }
-
-  void CreateSignedMap() {
-    maps_.resize(BUCKET_COUNT);
-    maps_mutex.resize(BUCKET_COUNT);
-    // Интервалы вида -inf...N*(-KEY_STEP)...2*(-KEY_STEP)...1*(-KEY_STEP)...1/2*(-KEY_STEP)..0..1/2*KEY_STOP...1*(-KEY_STEP)...2*(-KEY_STEP)...N*(-KEY_STEP)...+inf
-    // Различаются для четного и нечетного BUCKET_COUNT
-
-    if (BUCKET_COUNT == 1) {
-      map_indexes_.push_back(Interval{{BUCKET_COUNT - 1, std::numeric_limits<K>::max()}});
-    }
-    else {
-      // negative_count - количество map для отрицательного диапазона чисел
-      // middle count - в случае если число map нечетное
-      // positive_count - количество map для не отрицательного диапазона чисел
-      size_t negative_count = BUCKET_COUNT / 2, positive_count = BUCKET_COUNT / 2, middle_count = BUCKET_COUNT % 2;
-      float coef = (middle_count) ? 1.5 : 1.0;
-      size_t index_interval = 0;
-      for (size_t i = 0; i < negative_count; ++i) {
-        map_indexes_.push_back(Interval{{index_interval++, -KEY_STEP * coef * (negative_count - i)}});
-      }
-      if (middle_count) {
-        map_indexes_.push_back(Interval{{index_interval++, -KEY_STEP / 2}});
-        map_indexes_.push_back(Interval{{index_interval++, +KEY_STEP / 2}});
-      }
-      else {
-        map_indexes_.push_back(Interval{{index_interval++, 0}});
-      }
-
-    }
-  }
-   */
 };
 
 void RunConcurrentUpdates(
@@ -249,6 +222,6 @@ void TestSpeedup() {
 int main() {
   TestRunner tr;
   RUN_TEST(tr, TestConcurrentUpdate);
-  RUN_TEST(tr, TestReadAndWrite);
-  RUN_TEST(tr, TestSpeedup);
+  //RUN_TEST(tr, TestReadAndWrite);
+  //RUN_TEST(tr, TestSpeedup);
 }
