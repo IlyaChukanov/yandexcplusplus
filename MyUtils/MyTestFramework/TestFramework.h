@@ -5,8 +5,6 @@
 #ifndef YANDEXCPLUSPLUS_MYUTILS_MYTESTFRAMEWORK_TESTFRAMEWORK_H_
 #define YANDEXCPLUSPLUS_MYUTILS_MYTESTFRAMEWORK_TESTFRAMEWORK_H_
 
-#pragma once
-
 #include <sstream>
 #include <stdexcept>
 #include <iostream>
@@ -101,7 +99,7 @@ class TestRunner {
 };
 
 #define ASSERT_EQUAL(x, y) {                                  \
-  std::ostringstream ae__uniq_string_stream__;                     \
+  std::ostringstream ae__uniq_string_stream__;                \
   ae__uniq_string_stream__ << #x << " != " << #y << ", "      \
     << __FILE__ << ":" << __LINE__;                           \
   AssertEqual(x, y, ae__uniq_string_stream__.str());          \
