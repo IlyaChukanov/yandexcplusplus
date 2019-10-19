@@ -44,11 +44,11 @@ void SearchServer::AddQueriesStream(istream& query_input, ostream& search_result
       }
     }
     */
-    deque<pair<size_t, size_t>> search_results;
+    std::vector<pair<size_t, size_t>> search_results;
     for (const auto& word : SplitIntoWords(current_query)) {
-      for (const auto& map_id : index.LookupFreq(word)) {
-        search_results.push_back(map_id);
-      }
+      auto vec = index.LookupFreq(word);
+        search_results.insert(search_results.end(), std::make_move_iterator(vec.begin()),
+                                                    std::make_move_iterator(vec.end()));
     }
     /*
     vector<pair<size_t, size_t>> search_results(
@@ -81,8 +81,14 @@ void InvertedIndex::Add(string &&document) {
   docs.push_back(std::move(document));
   const size_t docid = docs.size() - 1;
   for (const auto& word : SplitIntoWords(docs.back())) {
-    index[word].push_back(docid);
-    //freq_index[word][docid]++;
+    //index[word].push_back(docid);
+    auto& vec_pair = freq_index[word];
+    if (!vec_pair.empty() && vec_pair.back().first == docid) {
+      vec_pair.back().second += 1;
+    }
+    else {
+      freq_index[word].push_back({docid, 1});
+    }
   }
 }
 
@@ -94,7 +100,7 @@ list<size_t> InvertedIndex::Lookup(string_view word) const {
   }
 }
 
-std::map<size_t, size_t> InvertedIndex::LookupFreq(string_view word) const {
+std::vector<std::pair<size_t, size_t>> InvertedIndex::LookupFreq(string_view word) const {
   if (auto it = freq_index.find(word); it != freq_index.end()) {
     return it->second;
   } else {
