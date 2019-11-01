@@ -220,8 +220,8 @@ void TestHighLoad1() {
   std::string word5 = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
   vector<string> docs;
-  const size_t DOCS_COUNT = 10000;
-  const size_t DOCS_WORD_COUNT = 100;
+  const size_t DOCS_COUNT = 50000;
+  const size_t DOCS_WORD_COUNT = 10;
   for (size_t i = 0; i < DOCS_COUNT; ++i) {
     std::string docs_str;
     for (size_t j = 0; j < DOCS_WORD_COUNT / 5; ++j) {
@@ -230,7 +230,7 @@ void TestHighLoad1() {
     docs.push_back(docs_str);
   }
 
-  const size_t QUERIES_COUNT = 20000;
+  const size_t QUERIES_COUNT = 50000;
   const size_t QUERIES_WORD_COUNT = 10;
   vector<string> queries;
   for (size_t i = 0; i < QUERIES_COUNT; ++i) {
@@ -301,14 +301,11 @@ void TestHighLoad() {
 
 int main() {
   TestRunner tr;
-  /*
-  RUN_TEST(tr, TestSerpFormat);
-  RUN_TEST(tr, TestTop5);
-  RUN_TEST(tr, TestHitcount);
-  RUN_TEST(tr, TestRanking);
-  RUN_TEST(tr, TestBasicSearch);
-   */
+  //RUN_TEST(tr, TestSerpFormat);
+  //RUN_TEST(tr, TestTop5);
+  //RUN_TEST(tr, TestHitcount);
+  //RUN_TEST(tr, TestRanking);
+  //RUN_TEST(tr, TestBasicSearch);
   //RUN_TEST(tr, TestHighLoad);
   RUN_TEST(tr, TestHighLoad1);
-  //RUN_TEST(tr, TestCustom);
 }

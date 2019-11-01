@@ -1,6 +1,5 @@
 #include "search_server.h"
 #include "iterator_range.h"
-#include "../../MyUtils/Profiler/profiler.h"
 
 #include <algorithm>
 #include <iterator>
@@ -38,19 +37,26 @@ void SearchServer::UpdateDocumentBase(istream& document_input) {
 
 void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output) {
   for (string current_query; getline(query_input, current_query); ) {
-    std::array<pair<size_t, size_t>, 50000> docs;
+    std::vector<size_t> docs;
+    docs.resize(50000);
+    std::set<size_t> ind;
     for (const auto& word : SplitIntoWords(current_query)) {
       auto vec = index.Lookup(word);
       for (const auto& [docid, count] : vec) {
-        docs[docid].first = docid;
-        docs[docid].second += count;
+        docs[docid] += count;
+        ind.insert(docid);
       }
     }
+    std::vector<std::pair<size_t, size_t>> search_result;
+    for (const auto& i : ind) {
+      search_result.emplace_back(i, docs[i]);
+    }
+
     const size_t ANSWERS_COUNT = 5;
     std::partial_sort(
-        begin(docs),
-        begin(docs) + ANSWERS_COUNT,
-        end(docs),
+        begin(search_result),
+        begin(search_result) + std::min<size_t>(ANSWERS_COUNT, search_result.size()),
+        end(search_result),
         [](pair<size_t, size_t> lhs, pair<size_t, size_t> rhs) {
           int64_t lhs_docid = lhs.first;
           auto lhs_hit_count = lhs.second;
@@ -60,7 +66,7 @@ void SearchServer::AddQueriesStream(istream& query_input, ostream& search_result
         }
     );
     search_results_output << current_query << ':';
-    for (auto [docid, hitcount] : Head(docs, ANSWERS_COUNT)) {
+    for (auto [docid, hitcount] : Head(search_result, ANSWERS_COUNT)) {
       search_results_output << " {"
                             << "docid: " << docid << ", "
                             << "hitcount: " << hitcount << '}';
