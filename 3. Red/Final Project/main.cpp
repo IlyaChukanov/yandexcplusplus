@@ -211,9 +211,95 @@ void TestBasicSearch() {
   TestFunctionality(docs, queries, expected);
 }
 
-void TestHighLoad() {
+void TestHighLoad1() {
+  std::cerr << "HIGH LOAD TEST 1" << std::endl;
+  std::string word1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  std::string word2 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  std::string word3 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+  std::string word4 = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+  std::string word5 = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+  vector<string> docs;
+  const size_t DOCS_COUNT = 10000;
+  const size_t DOCS_WORD_COUNT = 100;
+  for (size_t i = 0; i < DOCS_COUNT; ++i) {
+    std::string docs_str;
+    for (size_t j = 0; j < DOCS_WORD_COUNT / 5; ++j) {
+      docs_str = word1 + " " + word2 + " "  + word3 + " "  + word4 + " "  + word5;
+    }
+    docs.push_back(docs_str);
+  }
+
+  const size_t QUERIES_COUNT = 2000;
+  const size_t QUERIES_WORD_COUNT = 10;
+  vector<string> queries;
+  for (size_t i = 0; i < QUERIES_COUNT; ++i) {
+    std::string q_str;
+    for (size_t j = 0; j < QUERIES_WORD_COUNT / 2; ++j) {
+      q_str = word2 + " "  +  word4;
+    }
+    queries.push_back(q_str);
+  }
+
+  std::cerr << "HIGH LOAD TEST" << std::endl;
+  istringstream docs_input(Join('\n', docs));
+  istringstream queries_input(Join('\n', queries));
+
+  SearchServer srv;
+  {
+    LOG_DURATION("UpdateDocumentBase");
+    srv.UpdateDocumentBase(docs_input);
+  }
+  ostringstream queries_output;
+  {
+    LOG_DURATION("AddQueriesStream");
+    srv.AddQueriesStream(queries_input, queries_output);
+  }
+}
+
+void TestCustom() {
   vector<string> docs;
   const size_t DOCS_COUNT = 100'000;
+
+  docs.emplace_back("a   b c   d");
+  docs.emplace_back("  a b c d");
+  docs.emplace_back("   c  d e f   ");
+  docs.emplace_back("d  e f    g");
+
+  const vector<string> queries = {
+      "a"
+      "b"
+      "c"
+      "d"
+      "e"
+      "f"
+      "g"
+      "b  c   d  f"
+      "cde g"
+      " c d"
+      "  a b  "
+      "g     "
+  };
+
+  istringstream docs_input(Join('\n', docs));
+  istringstream queries_input(Join('\n', queries));
+
+  SearchServer srv;
+  {
+    LOG_DURATION("UpdateDocumentBase");
+    srv.UpdateDocumentBase(docs_input);
+  }
+  ostringstream queries_output;
+  {
+    LOG_DURATION("AddQueriesStream");
+    srv.AddQueriesStream(queries_input, queries_output);
+  }
+}
+
+void TestHighLoad() {
+  std::cerr << "HIGH LOAD TEST" << std::endl;
+  vector<string> docs;
+  const size_t DOCS_COUNT = 10'000;
   for (size_t i = 0; i < DOCS_COUNT; ++i) {
     docs.emplace_back("Hello this is firstaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa line of really high load docs");
     docs.emplace_back("Hello this is secondaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa line of really high load docs");
@@ -234,15 +320,6 @@ void TestHighLoad() {
       "I am likeaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa it"
   };
 
-  std::cerr << "HIGH LOAD TEST" << std::endl;
-  {
-    LOG_DURATION("Join Data");
-    istringstream docs_input(Join('\n', docs));
-  }
-  {
-    LOG_DURATION("Join Queries");
-    istringstream queries_input(Join('\n', queries));
-  }
   istringstream docs_input(Join('\n', docs));
   istringstream queries_input(Join('\n', queries));
 
@@ -259,20 +336,18 @@ void TestHighLoad() {
 
   const string result = queries_output.str();
   const auto lines = SplitBy(Strip(result), '\n');
-  /*
-  ASSERT_EQUAL(lines.size(), expected.size());
-  for (size_t i = 0; i < lines.size(); ++i) {
-    ASSERT_EQUAL(lines[i], expected[i]);
-  }
-  */
 }
 
 int main() {
   TestRunner tr;
+  /*
   RUN_TEST(tr, TestSerpFormat);
   RUN_TEST(tr, TestTop5);
   RUN_TEST(tr, TestHitcount);
   RUN_TEST(tr, TestRanking);
   RUN_TEST(tr, TestBasicSearch);
-  RUN_TEST(tr, TestHighLoad);
+   */
+  //RUN_TEST(tr, TestHighLoad);
+  RUN_TEST(tr, TestHighLoad1);
+  //RUN_TEST(tr, TestCustom);
 }

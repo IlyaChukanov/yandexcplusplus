@@ -15,17 +15,13 @@ using namespace std;
 class InvertedIndex {
 public:
   void Add(string &&document);
-  list<size_t> Lookup(string_view word) const;
-  std::vector<std::pair<size_t, size_t>> LookupFreq(string_view word) const;
+  std::vector<std::pair<size_t, size_t>> Lookup(string_view word) const;
 
   const string& GetDocument(size_t id) const {
     return docs[id];
   }
 
 private:
-  // Хранить string_view вместо string
-  // т.к. document хранится в docs и строки не исчезают
-  map<std::string_view, list<size_t>> index;
   map<std::string_view, std::vector<std::pair<size_t, size_t>>> freq_index;
   std::deque<string> docs;
 };
