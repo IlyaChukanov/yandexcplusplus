@@ -230,7 +230,7 @@ void TestHighLoad1() {
     docs.push_back(docs_str);
   }
 
-  const size_t QUERIES_COUNT = 2000;
+  const size_t QUERIES_COUNT = 20000;
   const size_t QUERIES_WORD_COUNT = 10;
   vector<string> queries;
   for (size_t i = 0; i < QUERIES_COUNT; ++i) {
@@ -242,45 +242,6 @@ void TestHighLoad1() {
   }
 
   std::cerr << "HIGH LOAD TEST" << std::endl;
-  istringstream docs_input(Join('\n', docs));
-  istringstream queries_input(Join('\n', queries));
-
-  SearchServer srv;
-  {
-    LOG_DURATION("UpdateDocumentBase");
-    srv.UpdateDocumentBase(docs_input);
-  }
-  ostringstream queries_output;
-  {
-    LOG_DURATION("AddQueriesStream");
-    srv.AddQueriesStream(queries_input, queries_output);
-  }
-}
-
-void TestCustom() {
-  vector<string> docs;
-  const size_t DOCS_COUNT = 100'000;
-
-  docs.emplace_back("a   b c   d");
-  docs.emplace_back("  a b c d");
-  docs.emplace_back("   c  d e f   ");
-  docs.emplace_back("d  e f    g");
-
-  const vector<string> queries = {
-      "a"
-      "b"
-      "c"
-      "d"
-      "e"
-      "f"
-      "g"
-      "b  c   d  f"
-      "cde g"
-      " c d"
-      "  a b  "
-      "g     "
-  };
-
   istringstream docs_input(Join('\n', docs));
   istringstream queries_input(Join('\n', queries));
 

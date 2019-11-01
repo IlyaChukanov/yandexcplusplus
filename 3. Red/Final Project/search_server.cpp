@@ -37,58 +37,35 @@ void SearchServer::UpdateDocumentBase(istream& document_input) {
 }
 
 void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output) {
-  TotalDuration parse("Total parse query");
-  TotalDuration move("Total move data");
-  TotalDuration sort("Total sort");
-  TotalDuration answer("Total create answer");
   for (string current_query; getline(query_input, current_query); ) {
-    std::vector<size_t> indexes;
-    std::array<size_t, 50000> docs;
-    {
-      ADD_DURATION(parse)
-      for (const auto& word : SplitIntoWords(current_query)) {
-        auto vec = index.Lookup(word);
-        for (const auto& [docid, count] : vec) {
-          docs[docid] += count;
-          indexes.push_back(docid);
+    std::array<pair<size_t, size_t>, 50000> docs;
+    for (const auto& word : SplitIntoWords(current_query)) {
+      auto vec = index.Lookup(word);
+      for (const auto& [docid, count] : vec) {
+        docs[docid].first = docid;
+        docs[docid].second += count;
+      }
+    }
+    const size_t ANSWERS_COUNT = 5;
+    std::partial_sort(
+        begin(docs),
+        begin(docs) + ANSWERS_COUNT,
+        end(docs),
+        [](pair<size_t, size_t> lhs, pair<size_t, size_t> rhs) {
+          int64_t lhs_docid = lhs.first;
+          auto lhs_hit_count = lhs.second;
+          int64_t rhs_docid = rhs.first;
+          auto rhs_hit_count = rhs.second;
+          return make_pair(lhs_hit_count, -lhs_docid) > make_pair(rhs_hit_count, -rhs_docid);
         }
-      }
+    );
+    search_results_output << current_query << ':';
+    for (auto [docid, hitcount] : Head(docs, ANSWERS_COUNT)) {
+      search_results_output << " {"
+                            << "docid: " << docid << ", "
+                            << "hitcount: " << hitcount << '}';
     }
-
-    std::vector<pair<size_t, size_t>> search_results;
-    {
-      ADD_DURATION(move)
-      search_results.reserve(indexes.size());
-      for (const auto& id : indexes) {
-        search_results.emplace_back(std::make_pair(id, docs[id]));
-      }
-    }
-    {
-      ADD_DURATION(sort)
-      std::sort(
-          begin(search_results),
-          end(search_results),
-          [](pair<size_t, size_t> lhs, pair<size_t, size_t> rhs) {
-            int64_t lhs_docid = lhs.first;
-            auto lhs_hit_count = lhs.second;
-            int64_t rhs_docid = rhs.first;
-            auto rhs_hit_count = rhs.second;
-            return make_pair(lhs_hit_count, -lhs_docid) > make_pair(rhs_hit_count, -rhs_docid);
-          }
-      );
-    }
-
-    {
-      ADD_DURATION(answer)
-      search_results_output << current_query << ':';
-      for (auto [docid, hitcount] : Head(search_results, 5)) {
-        search_results_output << " {"
-                              << "docid: " << docid << ", "
-                              << "hitcount: " << hitcount << '}';
-      }
-      search_results_output << endl;
-    }
-
+    search_results_output << endl;
   }
 }
 
