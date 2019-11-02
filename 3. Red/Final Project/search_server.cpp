@@ -36,20 +36,28 @@ void SearchServer::UpdateDocumentBase(istream& document_input) {
 }
 
 void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output) {
+  std::vector<size_t> docs;
+  std::vector<size_t> ind;
+  docs.resize(50000);
+  ind.resize(50000);
   for (string current_query; getline(query_input, current_query); ) {
-    std::vector<size_t> docs;
-    docs.resize(50000);
-    std::set<size_t> ind;
+    size_t curr_ind = 0;
     for (const auto& word : SplitIntoWords(current_query)) {
       auto vec = index.Lookup(word);
       for (const auto& [docid, count] : vec) {
+        if (docs[docid] == 0) {
+          ind[curr_ind++] = docid;
+        }
         docs[docid] += count;
-        ind.insert(docid);
       }
     }
     std::vector<std::pair<size_t, size_t>> search_result;
-    for (const auto& i : ind) {
-      search_result.emplace_back(i, docs[i]);
+    for (size_t docid = 0; docid < curr_ind; ++docid) {
+      size_t count = 0;
+      size_t id = 0;
+      std::swap(count, docs[ind[docid]]);
+      std::swap(id, ind[docid]);
+      search_result.emplace_back(id, count);
     }
 
     const size_t ANSWERS_COUNT = 5;
