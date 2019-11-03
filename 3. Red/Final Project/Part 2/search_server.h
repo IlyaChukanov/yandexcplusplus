@@ -1,7 +1,6 @@
 #pragma once
 
-#include <istream>
-#include <ostream>
+#include <iostream>
 #include <set>
 #include <list>
 #include <vector>
@@ -10,6 +9,7 @@
 #include <future>
 #include <mutex>
 #include <deque>
+#include <thread>
 
 using namespace std;
 
@@ -30,13 +30,12 @@ private:
 class SearchServer {
 public:
   SearchServer() = default;
+  ~SearchServer();
   explicit SearchServer(istream& document_input);
   void UpdateDocumentBase(istream& document_input);
   void AddQueriesStream(istream& query_input, ostream& search_results_output);
-
 private:
-
-  //std::vector<std::future
-  std::mutex index_mutex;
-  InvertedIndex index;
+  std::vector<std::future<void>> futures_;
+  std::mutex index_mutex_;
+  InvertedIndex index_;
 };

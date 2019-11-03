@@ -25,17 +25,19 @@ void TestFunctionality(
   std::cerr << "------------" << std::endl;
   istringstream docs_input(Join('\n', docs));
   istringstream queries_input(Join('\n', queries));
-
-  SearchServer srv;
-  {
-    LOG_DURATION("UpdateDocumentBase");
-    srv.UpdateDocumentBase(docs_input);
-  }
   ostringstream queries_output;
   {
-    LOG_DURATION("AddQueriesStream");
-    srv.AddQueriesStream(queries_input, queries_output);
+    SearchServer srv;
+    {
+      LOG_DURATION("UpdateDocumentBase");
+      srv.UpdateDocumentBase(docs_input);
+    }
+    {
+      LOG_DURATION("AddQueriesStream");
+      srv.AddQueriesStream(queries_input, queries_output);
+    }
   }
+
 
   const string result = queries_output.str();
   const auto lines = SplitBy(Strip(result), '\n');
@@ -211,7 +213,7 @@ void TestBasicSearch() {
   TestFunctionality(docs, queries, expected);
 }
 
-void TestHighLoad1() {
+void TestHighLoad() {
   std::cerr << "HIGH LOAD TEST 1" << std::endl;
   std::string word1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   std::string word2 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
@@ -257,7 +259,7 @@ void TestHighLoad1() {
   }
 }
 
-void TestHighLoad() {
+void TestHighLoad1() {
   std::cerr << "HIGH LOAD TEST" << std::endl;
   vector<string> docs;
   const size_t DOCS_COUNT = 10'000;
@@ -299,13 +301,71 @@ void TestHighLoad() {
   const auto lines = SplitBy(Strip(result), '\n');
 }
 
+void TestSearchServer(std::vector<std::pair<istringstream, ostringstream>> & streams) {
+  LOG_DURATION("Total");
+  SearchServer srv(streams.front().first);
+  for (auto& [input, output] :
+      IteratorRange(begin(streams) + 1, end(streams))) {
+    if (!output) {
+      srv.UpdateDocumentBase(input);
+    } else {
+      srv.AddQueriesStream(input, output);
+    }
+  }
+}
+
+
+void TestParallel() {
+  std::cerr << "HIGH PARALLEL" << std::endl;
+  std::string word1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  std::string word2 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  std::string word3 = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+  std::string word4 = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+  std::string word5 = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+
+  vector<string> docs;
+  const size_t DOCS_COUNT = 10000;
+  const size_t DOCS_WORD_COUNT = 10;
+  for (size_t i = 0; i < DOCS_COUNT; ++i) {
+    std::string docs_str;
+    for (size_t j = 0; j < DOCS_WORD_COUNT / 5; ++j) {
+      docs_str = word1 + " " + word2 + " "  + word3 + " "  + word4 + " "  + word5;
+    }
+    docs.push_back(docs_str);
+  }
+
+  const size_t QUERIES_COUNT = 1000;
+  const size_t QUERIES_WORD_COUNT = 10;
+  vector<string> queries;
+  for (size_t i = 0; i < QUERIES_COUNT; ++i) {
+    std::string q_str;
+    for (size_t j = 0; j < QUERIES_WORD_COUNT / 2; ++j) {
+      q_str = word2 + " "  +  word4;
+    }
+    queries.push_back(q_str);
+  }
+
+  const size_t streams_pair = 2;
+  ostringstream empty;
+  istringstream input_docs(Join('\n', docs));
+  std::vector<std::pair<istringstream, ostringstream>> streams;
+  streams.emplace_back(std::move(input_docs), std::move(empty));
+  for (size_t i = 0; i < streams_pair; ++i) {
+    istringstream queries_input(Join('\n', queries));
+    ostringstream output;
+    streams.emplace_back(std::move(queries_input), std::move(output));
+  }
+  TestSearchServer(streams);
+}
+
 int main() {
   TestRunner tr;
-  RUN_TEST(tr, TestSerpFormat);
   RUN_TEST(tr, TestTop5);
   RUN_TEST(tr, TestHitcount);
   RUN_TEST(tr, TestRanking);
   RUN_TEST(tr, TestBasicSearch);
   RUN_TEST(tr, TestHighLoad);
-  //RUN_TEST(tr, TestHighLoad1);
+  RUN_TEST(tr, TestHighLoad1);
+  RUN_TEST(tr, TestSerpFormat);
+  RUN_TEST(tr, TestParallel);
 }
