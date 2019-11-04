@@ -10,7 +10,7 @@
 int main() {
   int N, M;
   int width = 10;
-  std::string my_path = "../4th Week/input.txt";
+  std::string my_path = "../4 Week/input.txt";
   std::string path = "input.txt";
 
   std::ifstream input(path);

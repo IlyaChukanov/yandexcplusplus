@@ -7,7 +7,7 @@
 #include <iostream>
 
 int main() {
-  std::string my_path = "../4th Week/input.txt";
+  std::string my_path = "../4 Week/input.txt";
   std::string path = "input.txt";
   std::ifstream input(path);
   if (input.is_open()) {

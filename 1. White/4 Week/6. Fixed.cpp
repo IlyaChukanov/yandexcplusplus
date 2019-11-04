@@ -8,7 +8,7 @@
 #include <iomanip>
 
 int main() {
-  std::string my_path = "../4th Week/input.txt";
+  std::string my_path = "../4 Week/input.txt";
   std::string path = "input.txt";
   std::ifstream input(path);
   std::cout << std::fixed << std::setprecision(3);

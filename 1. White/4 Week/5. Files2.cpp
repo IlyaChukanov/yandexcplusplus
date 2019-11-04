@@ -7,7 +7,7 @@
 #include <iostream>
 
 int main() {
-  std::string my_in_path = "../4th Week/input.txt", my_out_path = "../4th Week/output.txt";
+  std::string my_in_path = "../4 Week/input.txt", my_out_path = "../4 Week/output.txt";
   std::string in_path = "input.txt", out_path = "output.txt";
   std::ifstream input(in_path);
   std::ofstream output(out_path);
