@@ -1,6 +1,4 @@
-//#include "test_runner.h"
 #include "../../../MyUtils/MyTestFramework/TestFramework.h"
-//#include "../../../MyUtils/Profiler/profiler.h"
 #include <iostream>
 #include <map>
 #include <string>
@@ -22,40 +20,13 @@ struct Record {
 class Database {
 public:
 
-  Database() {
-    //time_dur = TotalDuration("- Time Duration");
-    //karma_dur = TotalDuration("- Karma Duration");
-    //user_dur = TotalDuration("- User Duration");
-    //db_dur = TotalDuration("- DB Duration");
-  }
-
   bool Put(const Record& record) {
-    auto record_id = record.id;
-    if (!database_.count(record_id)) {
-
-      auto timestamp_inserted = timestamp_range.insert(std::make_pair(record.timestamp, record.id));
-      auto karma_inserted = karma_range.insert(std::make_pair(record.karma, record.id));
-      users_ids[record.user].insert(record_id);
-      database_[record_id] = {record, timestamp_inserted, karma_inserted};
-
-      /*TimeStampIndex::iterator timestamp_inserted;
-      KarmaIndex::iterator karma_inserted;
-      {
-        ADD_DURATION(time_dur);
-        timestamp_inserted = timestamp_range.insert(std::make_pair(record.timestamp, record_id));
-      }
-      {
-        ADD_DURATION(karma_dur)
-        karma_inserted = karma_range.insert(std::make_pair(record.karma, record_id));
-      }
-      {
-        ADD_DURATION(user_dur);
-        users_ids[record.user].insert(record_id);
-      }
-      {
-        ADD_DURATION(db_dur);
-        database_[record_id] = {std::move(record), timestamp_inserted, karma_inserted};
-      }*/
+    if (!database_.count(record.id)) {
+      auto& res = database_[record.id];
+      res.record_ = record;
+      res.timestamp_record_ = timestamp_range.emplace(record.timestamp, &res.record_);
+      res.karma_record_ = karma_range.emplace(record.karma, &res.record_);
+      res.user_record_ = users_ids.emplace(record.user, &res.record_);
       return true;
     }
     else {
@@ -76,7 +47,7 @@ public:
     if (database_.count(id)) {
       timestamp_range.erase(database_[id].timestamp_record_);
       karma_range.erase(database_[id].karma_record_);
-      users_ids[database_[id].record_.user].erase(id);
+      users_ids.erase(database_[id].user_record_);
       database_.erase(id);
       return true;
     }
@@ -90,7 +61,7 @@ public:
     auto range_begin = timestamp_range.lower_bound(low);
     auto range_end = timestamp_range.upper_bound(high);
     if (range_begin == timestamp_range.end()) return;
-    for (auto i = range_begin; i != range_end && callback(database_.at(i->second).record_); ++i);
+    for (auto id = range_begin; id != range_end && callback(*(id->second)); ++id);
   }
 
   template <typename Callback>
@@ -99,28 +70,27 @@ public:
     auto range_end = karma_range.upper_bound(high);
     if (range_begin == karma_range.end()) return;
     bool flag = true;
-    for (auto i = range_begin; i != range_end && callback(database_.at(i->second).record_); ++i);
+    for (auto id = range_begin; id != range_end && callback(*(id->second)); ++id);
   }
 
   template <typename Callback>
   void AllByUser(const string& user, Callback callback) const {
-    auto finded = users_ids.find(user);
-    if (finded == users_ids.end()) return;
-    auto cont = finded->second;
-    for (auto id = finded->second.begin(); id != finded->second.end() && callback(database_.at(*id).record_); ++id);
+    auto finded = users_ids.equal_range(user);
+    if (finded.first == users_ids.end()) return;
+    for (auto id = finded.first; id != finded.second && callback(*(id->second)); ++id);
   }
 
  private:
 
-  using TimeStampIndex = std::multimap<int, std::string>;
-  using KarmaIndex = std::multimap<int, std::string>;
-  using UserIndex = std::unordered_map<std::string, std::unordered_set<std::string>>;
+  using TimeStampIndex = std::multimap<int, const Record*>;
+  using KarmaIndex = std::multimap<int, const Record*>;
+  using UserIndex = std::multimap<std::string, const Record*>;
 
   struct DBRecord {
     Record record_;
     TimeStampIndex::iterator timestamp_record_;
     KarmaIndex::iterator karma_record_;
-    //UserIndex::iterator user_index_;
+    UserIndex::iterator user_record_;
   };
 
   //TotalDuration time_dur, karma_dur, user_dur, db_dur;
@@ -181,83 +151,10 @@ void TestReplacement() {
   ASSERT_EQUAL(final_body, record->title);
 }
 
-
-/*void HighLoad() {
-  Database db;
-
-  const size_t PUT_COUNT = 300000;
-  {
-    LOG_DURATION("PUT TIME")
-    int id = 0;
-    for (size_t i = 0; i < PUT_COUNT; ++i) {
-      db.Put({"id" + std::to_string(id), "Text", "Name" + std::to_string(id / 10), 1000 + id, 10 + id % 10});
-      id++;
-    }
-  }
-  const size_t ERASE_COUNT = 100000;
-  {
-    LOG_DURATION("ERASE TIME")
-    int id = 0;
-    for (size_t i = 0; i < ERASE_COUNT; ++i) {
-      db.Erase("id" + std::to_string(id));
-      id += 2;
-    }
-  }
-  const size_t GET_COUNT = 100000;
-  {
-    LOG_DURATION("GET TIME")
-    int id = 0;
-    for (size_t i = 0; i < ERASE_COUNT; ++i) {
-      db.GetById("id" + std::to_string(id));
-      id += 3;
-    }
-  }
-
-  const size_t TIMESTAMP_COUNT = 100000;
-  {
-    LOG_DURATION("TIMESTAMP TIME")
-    for (size_t i = 0; i < ERASE_COUNT; ++i) {
-      int count = 0;
-      db.RangeByTimestamp(i + 1000, i + 1100, [&count](const Record&) {
-        ++count;
-        return true;
-      });
-    }
-  }
-
-  const size_t KARMA_COUNT = 100000;
-  {
-    LOG_DURATION("KARMA TIME")
-    for (size_t i = 0; i < ERASE_COUNT; ++i) {
-      int count = 0;
-      db.RangeByKarma(i + 10, i + 30, [&count](const Record&) {
-        ++count;
-        return true;
-      });
-    }
-  }
-
-  const size_t NAME_COUNT = 100000;
-  {
-    LOG_DURATION("NAME TIME")
-    std::string name = "Name";
-    for (size_t i = 0; i < ERASE_COUNT; ++i) {
-      int count = 0;
-      db.AllByUser(name + std::to_string(i / 10), [&count](const Record&) {
-        ++count;
-        return true;
-      });
-    }
-  }
-
-
-}*/
-
 int main() {
   TestRunner tr;
   RUN_TEST(tr, TestRangeBoundaries);
   RUN_TEST(tr, TestSameUser);
   RUN_TEST(tr, TestReplacement);
-  //RUN_TEST(tr, HighLoad);
   return 0;
 }
