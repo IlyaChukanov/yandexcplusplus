@@ -38,3 +38,6 @@ cmake-*
 
 # GoogleTest source code
 googletest
+
+# Folders
+inf

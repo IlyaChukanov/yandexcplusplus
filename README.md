@@ -7,4 +7,4 @@
 - Кориченевый пояс: в процессе
 - Черный пояс: не начат
 
-Для юнит тестов используется [Google Test](https://github.com/google/googletest)
+Для юнит тестов используется самописный framework и [Google Test](https://github.com/google/googletest) 
