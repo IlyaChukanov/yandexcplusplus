@@ -1,5 +1,5 @@
-#include "test_runner.h"
-
+//#include "test_runner.h"
+//#include "../../../MyUtils/MyTestFramework/TestFramework.h"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -49,86 +49,138 @@ enum class HttpCode {
 };
 
 class HttpResponse {
+  struct Header {
+    std::string header_name_;
+    std::string header_value_;
+  };
  public:
-  explicit HttpResponse(HttpCode code);
-
+  explicit HttpResponse(HttpCode code) {
+    code_ = code;
+  }
   HttpResponse& AddHeader(string name, string value) {
-
+    headers_.push_back({std::move(name), std::move(value)});
+    return *this;
   }
   HttpResponse& SetContent(string a_content) {
-
+    body_ = std::move(a_content);
+    return *this;
   }
   HttpResponse& SetCode(HttpCode a_code) {
-
+    code_ = a_code;
+    return *this;
   }
 
   friend ostream& operator << (ostream& output, const HttpResponse& resp);
+
+ private:
+  HttpCode code_;
+  std::vector<Header> headers_;
+  std::string body_;
 };
 
+ostream& operator<<(ostream &output, const HttpResponse &resp) {
+  std::string header = "HTTP/1.1 " + std::to_string(static_cast<int>(resp.code_));
+  if (resp.code_ == HttpCode::Ok) {
+    header += " OK";
+  }
+  else if (resp.code_ == HttpCode::Found) {
+    header += " Found";
+  }
+  else if (resp.code_ == HttpCode::NotFound) {
+    header += " Not found";
+  }
+  header += "\n";
+
+  std::string headers;
+  for (const auto& header : resp.headers_) {
+    headers += header.header_name_ + ": " + header.header_value_ + "\n";
+  }
+
+  std::string body;
+  if (!resp.body_.empty()) {
+    headers += "Content-Length: " + std::to_string(resp.body_.size()) + "\n\n";
+    body = resp.body_;
+  }
+  else {
+    body = "\n";
+  }
+  // TODO возможно, в конце body всегда должен быть \n
+  output << header << headers << body;
+  return output;
+}
+
 class CommentServer {
-private:
+ public:
+  HttpResponse ServeRequest(const HttpRequest& req) {
+    if (req.method == "POST") {
+      return ServePost(req);
+    }
+    else if (req.method == "GET") {
+      return ServeGet(req);
+    }
+    else {
+      return HttpResponse(HttpCode::NotFound);
+    }
+  }
+ private:
+  HttpResponse ServePost(const HttpRequest& req) {
+    if (req.path == "/add_user") {
+      comments_.emplace_back();
+      auto response = to_string(comments_.size() - 1);
+      return HttpResponse(HttpCode::Ok).SetContent(response);
+    }
+    else if (req.path == "/add_comment") {
+      auto [user_id, comment] = ParseIdAndContent(req.body);
+
+      if (!last_comment || last_comment->user_id != user_id) {
+        last_comment = LastCommentInfo {user_id, 1};
+      } else if (++last_comment->consecutive_count > 3) {
+        banned_users.insert(user_id);
+      }
+
+      if (banned_users.count(user_id) == 0) {
+        comments_[user_id].push_back(string(comment));
+        return HttpResponse(HttpCode::Ok);
+      } else {
+        return HttpResponse(HttpCode::Found).AddHeader("Location", "/captcha");
+      }
+    }
+    else if (req.path == "/checkcaptcha") {
+      if (auto [id, response] = ParseIdAndContent(req.body); response == "42") {
+        banned_users.erase(id);
+        if (last_comment && last_comment->user_id == id) {
+          last_comment.reset();
+        }
+        return HttpResponse(HttpCode::Ok);
+      }
+      else {
+        return HttpResponse(HttpCode::Found).AddHeader("Location", "/captcha");
+      }
+    }
+    else {
+      return HttpResponse(HttpCode::NotFound);
+    }
+  }
+  HttpResponse ServeGet(const HttpRequest& req) {
+    if (req.path == "/user_comments") {
+      auto user_id = FromString<size_t>(req.get_params.at("user_id"));
+      string response;
+      for (const string& c : comments_[user_id]) {
+        response += c + '\n';
+      }
+      return HttpResponse(HttpCode::Ok).SetContent(response);
+    }
+    else if (req.path == "/captcha") {
+      std::string captcha = "What's the answer for The Ultimate Question of Life, the Universe, and Everything?";
+      return HttpResponse(HttpCode::Ok).SetContent(captcha);
+    }
+    else {
+      return HttpResponse(HttpCode::NotFound);
+    }
+  }
   vector<vector<string>> comments_;
   std::optional<LastCommentInfo> last_comment;
   unordered_set<size_t> banned_users;
-
-public:
-
-  HttpResponse ServeRequest(const HttpRequest& req) {
-    HttpResponse
-    return
-  }
-  void ServeRequest(const HttpRequest& req, ostream& os) {
-    if (req.method == "POST") {
-      if (req.path == "/add_user") {
-        comments_.emplace_back();
-        auto response = to_string(comments_.size() - 1);
-        os << "HTTP/1.1 200 OK\n" << "Content-Length: " << response.size() << "\n" << "\n"
-          << response;
-      } else if (req.path == "/add_comment") {
-        auto [user_id, comment] = ParseIdAndContent(req.body);
-
-        if (!last_comment || last_comment->user_id != user_id) {
-          last_comment = LastCommentInfo {user_id, 1};
-        } else if (++last_comment->consecutive_count > 3) {
-          banned_users.insert(user_id);
-        }
-
-        if (banned_users.count(user_id) == 0) {
-          comments_[user_id].push_back(string(comment));
-          os << "HTTP/1.1 200 OK\n\n";
-        } else {
-          os << "HTTP/1.1 302 Found\n\n"
-            "Location: /captcha\n"
-            "\n";
-        }
-      } else if (req.path == "/checkcaptcha") {
-        if (auto [id, response] = ParseIdAndContent(req.body); response == "42") {
-          banned_users.erase(id);
-          if (last_comment && last_comment->user_id == id) {
-            last_comment.reset();
-          }
-          os << "HTTP/1.1 200 OK\n\n";
-        }
-      } else {
-        os << "HTTP/1.1 404 Not found\n\n";
-      }
-    } else if (req.method == "GET") {
-      if (req.path == "/user_comments") {
-        auto user_id = FromString<size_t>(req.get_params.at("user_id"));
-        string response;
-        for (const string& c : comments_[user_id]) {
-          response += c + '\n';
-        }
-
-        os << "HTTP/1.1 200 OK\n" << "Content-Length: " << response.size() << response;
-      } else if (req.path == "/captcha") {
-        os << "HTTP/1.1 200 OK\n" << "Content-Length: 80\n" << "\n"
-          << "What's the answer for The Ultimate Question of Life, the Universe, and Everything?";
-      } else {
-        os << "HTTP/1.1 404 Not found\n\n";
-      }
-    }
-  }
 };
 
 struct HttpHeader {
@@ -175,10 +227,21 @@ istream& operator >>(istream& input, ParsedResponse& r) {
   input.read(r.content.data(), r.content.size());
   return input;
 }
+/*
+void TestOld(CommentServer& srv, const HttpRequest& request, const ParsedResponse& expected) {
+  stringstream ss;
+  srv.ServeRequest(request, ss);
+  ParsedResponse resp;
+  ss >> resp;
+  ASSERT_EQUAL(resp.code, expected.code);
+  ASSERT_EQUAL(resp.headers, expected.headers);
+  ASSERT_EQUAL(resp.content, expected.content);
+}
 
 void Test(CommentServer& srv, const HttpRequest& request, const ParsedResponse& expected) {
   stringstream ss;
-  srv.ServeRequest(request, ss);
+  auto req = srv.ServeRequest(request);
+  ss << req;
   ParsedResponse resp;
   ss >> resp;
   ASSERT_EQUAL(resp.code, expected.code);
@@ -235,3 +298,4 @@ int main() {
   TestRunner tr;
   RUN_TEST(tr, TestServer<CommentServer>);
 }
+*/
