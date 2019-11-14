@@ -1,5 +1,4 @@
-//#include "test_runner.h"
-//#include "../../../MyUtils/MyTestFramework/TestFramework.h"
+#include "../../../MyUtils/MyTestFramework/TestFramework.h"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -227,16 +226,6 @@ istream& operator >>(istream& input, ParsedResponse& r) {
   input.read(r.content.data(), r.content.size());
   return input;
 }
-/*
-void TestOld(CommentServer& srv, const HttpRequest& request, const ParsedResponse& expected) {
-  stringstream ss;
-  srv.ServeRequest(request, ss);
-  ParsedResponse resp;
-  ss >> resp;
-  ASSERT_EQUAL(resp.code, expected.code);
-  ASSERT_EQUAL(resp.headers, expected.headers);
-  ASSERT_EQUAL(resp.content, expected.content);
-}
 
 void Test(CommentServer& srv, const HttpRequest& request, const ParsedResponse& expected) {
   stringstream ss;
@@ -298,4 +287,3 @@ int main() {
   TestRunner tr;
   RUN_TEST(tr, TestServer<CommentServer>);
 }
-*/
