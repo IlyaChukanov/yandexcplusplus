@@ -26,30 +26,33 @@ public:
       }
     }
     std::unique_ptr<IBook> book;
+    size_t book_size;
     {
       std::lock_guard<std::mutex> a(mutex_);
       book = books_unpacker_->UnpackBook(book_name);
+      book_size = book->GetContent().size();
     }
-    auto book_content = book->GetContent();
     // Если книга больше размера кэша
-    if (book_content.size() > settings_.default_settings_.max_memory) {
+
+    if (book_size > settings_.default_settings_.max_memory) {
       return std::move(book);
     }
     // Если размер книги больше свободного места
-    if (book_content.size() > settings_.free_memory_) {
-      ClearCache(book_content.size());
+    if (book_size > settings_.free_memory_) {
+      ClearCache(book_size);
     }
     std::shared_ptr<IBook> result;
     {
       std::lock_guard<std::mutex> a(mutex_);
       cache_.push_front({book_name, std::move(book)});
       cache_elements_[book_name] = cache_.begin();
-      settings_.free_memory_ -= book_content.size();
+      settings_.free_memory_ -= book_size;
       result = cache_.front().book;
     }
     return result;
   }
  private:
+
   shared_ptr<IBooksUnpacker> books_unpacker_;
 
   struct SettingsState {
@@ -60,15 +63,18 @@ public:
     std::string name;
     std::shared_ptr<IBook> book;
   };
+
   std::unordered_map<std::string, std::list<CacheItem>::iterator> cache_elements_;
   std::list<CacheItem> cache_;
   std::mutex mutex_;
+
   void ClearCache(size_t need_free_space) {
     while (settings_.free_memory_ < need_free_space) {
       std::lock_guard<std::mutex> a(mutex_);
       auto deleted = cache_.back();
       cache_.pop_back();
       settings_.free_memory_ += deleted.book->GetContent().size();
+      cache_elements_.erase(deleted.name);
     }
   }
 };
