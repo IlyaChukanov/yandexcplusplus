@@ -3,39 +3,50 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <algorithm>
 
 using namespace std;
 
-bool IsSubdomain(string_view subdomain, string_view domain) {
-  auto i = subdomain.size() - 1;
-  auto j = domain.size() - 1;
+
+bool IsSubdomain(string_view subdomain_view, string_view domain_view) {
+  const string subdomain(rbegin(subdomain_view), rend(subdomain_view));
+  const string domain(rbegin(domain_view), rend(domain_view));
+  int i = subdomain.size() - 1;  // TODO: make auto
+  int j = domain.size() - 1;     // TODO: make auto
   while (i >= 0 && j >= 0) {
     if (subdomain[i--] != domain[j--]) {
       return false;
     }
   }
-  return (i < 0 && domain[j] == '.')
+  return (i < 0 && j < 0)  // TODO: do not check if i and j < 0
+      || (i < 0 && domain[j] == '.')
       || (j < 0 && subdomain[i] == '.');
 }
 
 
-std::vector<std::string> ReadFullDomains(std::istream& stream) {
-  int count;
-  stream >> count;
-  std::vector<std::string> res(count);
-  for (auto& s : res) {
-    stream >> s;
+vector<string> ReadDomains() {
+  vector<string> domains;
+
+  size_t count;
+  cin >> count;
+  domains.reserve(count);
+
+  string _;
+  getline(cin, _);  // TODO: remove
+
+  for (size_t i = 0; i < count; ++i) {
+    string domain;
+    getline(cin, domain);  // BUG: empty string is read at first step
+    domains.push_back(domain);
   }
-  return res;
+  return domains;
 }
 
+
 int main() {
+  vector<string> banned_domains = ReadDomains();  // TODO: add const
+  vector<string> domains_to_check = ReadDomains();  // TODO: add const
 
-  vector<string> banned_domains = ReadFullDomains(std::cin);
-  vector<string> domains_to_check = ReadFullDomains(std::cin);
-
-  for (string& domain : banned_domains) {
+  for (string& domain : banned_domains) {  // TODO: iterate with string_view
     reverse(begin(domain), end(domain));
   }
   sort(begin(banned_domains), end(banned_domains));
@@ -48,12 +59,13 @@ int main() {
   }
   banned_domains.resize(insert_pos);
 
-  for (const string_view domain : domains_to_check) {
+  for (string &domain : domains_to_check) {
+    reverse(begin(domain), end(domain));  // TODO: remove
     if (const auto it = upper_bound(begin(banned_domains), end(banned_domains), domain);
         it != begin(banned_domains) && IsSubdomain(domain, *prev(it))) {
-      cout << "Good" << endl;
-    } else {
       cout << "Bad" << endl;
+    } else {
+      cout << "Good" << endl;
     }
   }
   return 0;
