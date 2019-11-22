@@ -58,6 +58,7 @@ class DomainFilter {
     std::unordered_map<std::string, std::shared_ptr<Item>> data_;
   };
   Item bad_domains_;
+
   void ParseFullDomains(const std::vector<std::string>& raw_domains) {
     for (const auto& domain : raw_domains) {
       auto subdomains = SplitBy(domain);

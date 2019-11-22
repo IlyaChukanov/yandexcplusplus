@@ -1,7 +1,7 @@
 //
 // Created by ilya on 20.11.2019.
 //
-
+#include "../../../MyUtils/MyTestFramework/TestFramework.h"
 #include <sstream>
 
 void TestComputeMedianAgeWithEmpty() {
