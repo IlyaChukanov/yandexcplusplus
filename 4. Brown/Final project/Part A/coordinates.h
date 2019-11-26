@@ -11,11 +11,8 @@ public:
   explicit Coordinates(double latitude, double longitude) : latitude_(latitude_), longitude_(longitude) {}
 
   double GetLatitude() const;
-
   double& GetLatitude();
-
   double GetLongitude() const;
-
   double& GetLongitude();
 
   static double Distance(const Coordinates& from, const Coordinates& to);
