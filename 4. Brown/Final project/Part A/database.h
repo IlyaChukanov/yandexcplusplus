@@ -32,20 +32,23 @@ private:
 class Route {
 public:
   enum class RouteTypes {LINEAR, CYCLE};
-  explicit Route(const std::string& name) : name_(name) {}
-  virtual ~Route() = 0;
+  explicit Route(const std::string& name, const std::vector<std::string>& stops_name) : name_(name), stops_name_(stops_name) {}
+  virtual ~Route() = default;
   virtual size_t CountOfStops() const = 0;
   virtual size_t CountOfUniqueStops() const = 0;
   virtual double Length() const = 0;
   std::string GetName() const;
+  std::vector<std::string> GetStopsName() const;
 private:
   std::string name_;
+  std::vector<std::string> stops_name_;
 };
 
 class LinearRoute : public Route {
 public:
   LinearRoute() = default;
-  explicit LinearRoute(const std::string& name, std::vector<std::shared_ptr<Stop>>&& stops) : Route(name), stops_(stops) {}
+  explicit LinearRoute(const std::string& name, const std::vector<std::string>& stops_name,
+                       const std::vector<std::shared_ptr<Stop>>& stops) : Route(name, stops_name), stops_(stops) {}
   size_t CountOfStops() const override;
   size_t CountOfUniqueStops() const override;
   double Length() const override;
@@ -56,7 +59,8 @@ private:
 class CycleRoute : public Route {
 public:
   CycleRoute() = default;
-  explicit CycleRoute(const std::string& name, std::vector<std::shared_ptr<Stop>>&& stops) : Route(name), stops_(stops) {}
+  explicit CycleRoute(const std::string& name, const std::vector<std::string>& stops_name,
+                      const std::vector<std::shared_ptr<Stop>>& stops) : Route(name, stops_name), stops_(stops) {}
   size_t CountOfStops() const override;
   size_t CountOfUniqueStops() const override;
   double Length() const override;
@@ -64,16 +68,11 @@ private:
   std::vector<std::shared_ptr<Stop>> stops_;
 };
 
-std::shared_ptr<Route> MakeRoute(Route::RouteTypes type, std::string&& name, std::vector<std::shared_ptr<Stop>>&& stops) {
-  switch (type) {
-  case Route::RouteTypes::LINEAR:
-    return std::make_shared<LinearRoute>(stops);
-  case Route::RouteTypes::CYCLE:
-    return std::make_shared<CycleRoute>(stops);
-  default:
-    return nullptr;
-  }
-}
+struct RouteInfo {
+  Route::RouteTypes type;
+  std::string name;
+  std::vector<std::string> stop_names;
+};
 
 class Database {
   using StopData = std::unordered_map<std::string, std::shared_ptr<Stop>>;
@@ -81,11 +80,26 @@ class Database {
 public:
   Database() = default;
   void AddStop(Stop&& stop);
-  void AddRoute(const std::string& route_name, std::vector<std::string>&& stop_names);
-  std::shared_ptr<Route> TakeRoute(std::string_view route_name);
+  std::shared_ptr<Stop> TakeStop(const std::string &stop_name);
+  void AddRoute(const std::string& route_name, std::shared_ptr<Route> route);
+  std::shared_ptr<Route> TakeRoute(const std::string &route_name) const;
 private:
-  StopData all_stops_;
-  RouteData all_routes_;
+  StopData stops_;
+  RouteData routes_;
 };
+
+class RouteBuilder {
+public:
+  RouteBuilder() = delete;
+  explicit RouteBuilder(Database& db) : db_(db) {}
+  std::shared_ptr<Route> MakeRoute(RouteInfo&& info);
+private:
+  Database& db_;
+  // Для каждого типа маршрута своя логика создания, даже если она повторяется
+  // Все что их объединяет - наличие вектора имен для остановок и имя маршрута
+  std::shared_ptr<Route> MakeCycle(RouteInfo&& info);
+  std::shared_ptr<Route> MakeLinear(RouteInfo&& info);
+};
+
 
 #endif //YANDEXCPLUSPLUS_4_BROWN_FINAL_PROJECT_PART_A_DATABASE_H

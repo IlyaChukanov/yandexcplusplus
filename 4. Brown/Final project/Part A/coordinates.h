@@ -8,7 +8,7 @@
 class Coordinates {
 public:
   Coordinates() = default;
-  explicit Coordinates(double latitude, double longitude) : latitude_(latitude_), longitude_(longitude) {}
+  explicit Coordinates(double latitude, double longitude) : latitude_(latitude), longitude_(longitude) {}
 
   double GetLatitude() const;
   double& GetLatitude();
@@ -20,8 +20,8 @@ public:
 private:
   constexpr static double PI = 3.1415926535;
   constexpr static int RADIUS = 6371;
-  double latitude_;
-  double longitude_;
+  double latitude_ = 0;
+  double longitude_ = 0;
 };
 
 class CoordinatesBuilder {

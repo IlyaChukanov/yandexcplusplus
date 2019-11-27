@@ -4,6 +4,8 @@
 
 #include "database.h"
 
+#include <utility>
+
 Stop::Stop() {
   name_ = "unnamed";
 }
@@ -18,6 +20,10 @@ Coordinates Stop::GetCoord() const {
 
 std::string Route::GetName() const {
   return name_;
+}
+
+std::vector<std::string> Route::GetStopsName() const {
+  return stops_name_;
 }
 
 size_t LinearRoute::CountOfStops() const {
@@ -54,19 +60,52 @@ double CycleRoute::Length() const {
 }
 
 void Database::AddStop(Stop &&stop) {
-  all_stops_.insert({stop.GetName(), std::make_shared<Stop>(stop)});
+  stops_.insert({stop.GetName(), std::make_shared<Stop>(stop)});
 }
 
-void Database::AddRoute(const std::string &route_name, std::vector<std::string> &&stop_names) {
-  std::vector<std::shared_ptr<Stop>> stops_ptr;
-  stops_ptr.reserve(stop_names.size());
-  for(auto& str : stop_names) {
-    auto res = all_stops_.insert({str, std::make_shared<Stop>()});
-    stops_ptr.push_back(res.first->second);
+std::shared_ptr<Stop> Database::TakeStop(const std::string &stop_name) {
+  return stops_[stop_name];
+}
+
+void Database::AddRoute(const std::string& route_name, std::shared_ptr<Route> route) {
+  routes_[route_name] = std::move(route);
+}
+
+std::shared_ptr<Route> Database::TakeRoute(const std::string &route_name) const {
+  if (routes_.count(route_name)) {
+    return routes_.at(route_name);
   }
-  all_routes_.insert({route_name, MakeRoute()});
+  else {
+    return nullptr;
+  }
 }
 
-std::shared_ptr<Route> Database::TakeRoute(std::string_view route_name) {
-
+std::shared_ptr<Route> RouteBuilder::MakeRoute(RouteInfo&& info) {
+  switch (info.type) {
+  case Route::RouteTypes::LINEAR:
+    return MakeLinear(std::move(info));
+  case Route::RouteTypes::CYCLE:
+    return MakeCycle(std::move(info));
+  default:
+    return nullptr;
+  }
 }
+
+std::shared_ptr<Route> RouteBuilder::MakeCycle(RouteInfo&& info) {
+  std::vector<std::shared_ptr<Stop>> stops_ptr;
+  stops_ptr.reserve(info.stop_names.size());
+  for(auto& str : info.stop_names) {
+    stops_ptr.push_back(db_.TakeStop(str));
+  }
+  return std::make_shared<CycleRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
+}
+
+std::shared_ptr<Route> RouteBuilder::MakeLinear(RouteInfo&& info) {
+  std::vector<std::shared_ptr<Stop>> stops_ptr;
+  stops_ptr.reserve(info.stop_names.size());
+  for(auto& str : info.stop_names) {
+    stops_ptr.push_back(db_.TakeStop(str));
+  }
+  return std::make_shared<CycleRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
+}
+
