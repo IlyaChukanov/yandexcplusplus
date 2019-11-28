@@ -59,12 +59,20 @@ double CycleRoute::Length() const {
   return result;
 }
 
-void Database::AddStop(Stop &&stop) {
-  stops_.insert({stop.GetName(), std::make_shared<Stop>(stop)});
+void Database::AddStop(const Stop &stop) {
+  if (stops_.count(stop.GetName())) {
+    (*stops_.at(stop.GetName())) = stop;
+  }
+  else {
+    stops_.insert({stop.GetName(), std::make_shared<Stop>(stop)});
+  }
 }
 
 std::shared_ptr<Stop> Database::TakeStop(const std::string &stop_name) {
-  return stops_[stop_name];
+  if (!stops_.count(stop_name)) {
+    stops_.insert({stop_name, std::make_shared<Stop>(stop_name, Coordinates())});
+  }
+  return stops_.at(stop_name);
 }
 
 void Database::AddRoute(const std::string& route_name, std::shared_ptr<Route> route) {
@@ -106,6 +114,6 @@ std::shared_ptr<Route> RouteBuilder::MakeLinear(RouteInfo&& info) {
   for(auto& str : info.stop_names) {
     stops_ptr.push_back(db_.TakeStop(str));
   }
-  return std::make_shared<CycleRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
+  return std::make_shared<LinearRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
 }
 

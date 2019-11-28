@@ -44,6 +44,9 @@ private:
   std::vector<std::string> stops_name_;
 };
 
+static const std::unordered_map<char, Route::RouteTypes> sign_to_route = {{'-', Route::RouteTypes::LINEAR},
+                                                                          {'>', Route::RouteTypes::CYCLE}};
+
 class LinearRoute : public Route {
 public:
   LinearRoute() = default;
@@ -79,7 +82,7 @@ class Database {
   using RouteData = std::unordered_map<std::string, std::shared_ptr<Route>>;
 public:
   Database() = default;
-  void AddStop(Stop&& stop);
+  void AddStop(const Stop &stop);
   std::shared_ptr<Stop> TakeStop(const std::string &stop_name);
   void AddRoute(const std::string& route_name, std::shared_ptr<Route> route);
   std::shared_ptr<Route> TakeRoute(const std::string &route_name) const;

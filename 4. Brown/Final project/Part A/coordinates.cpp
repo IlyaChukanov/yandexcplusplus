@@ -21,7 +21,6 @@ double& Coordinates::GetLongitude() {
   return longitude_;
 }
 
-// Calculate and return distance in meters
 // TODO Неправильно считает
 double Coordinates::Distance(const Coordinates& from, const Coordinates& to) {
   double lat_1 = from.latitude_ * PI/180.0;
