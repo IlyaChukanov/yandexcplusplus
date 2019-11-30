@@ -18,7 +18,8 @@ public:
   enum class Type {
     ADD_ROUTE,
     ADD_STOP,
-    TAKE_ROUTE
+    TAKE_ROUTE,
+    TAKE_STOP
   };
   explicit Request(Type type) : type_(type) {}
   virtual void ParseFrom(std::string_view input) = 0;
@@ -72,7 +73,7 @@ private:
 
 struct TakeRouteAnswer {
   bool has_value;
-  std::string name;
+  std::string route_name;
   size_t stops_count;
   size_t unique_stops_count;
   double length;
@@ -88,4 +89,19 @@ private:
   std::string route_name;
 };
 
+struct TakeStopAnswer {
+  bool in_base;
+  std::string stop_name;
+  std::vector<std::string> names;
+};
+
+class TakeStopRequest : public ReadRequest<TakeStopAnswer> {
+public:
+  TakeStopRequest() : ReadRequest(Request::Type::TAKE_STOP) {}
+  void ParseFrom(std::string_view input);
+  TakeStopAnswer Process(const Database& db) const override;
+  std::string StringAnswer(const TakeStopAnswer& result) const override;
+private:
+  std::string stop_name;
+};
 #endif //YANDEXYELLOWFINAL_4_BROWN_FINAL_PROJECT_PART_A_REQUEST_H

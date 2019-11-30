@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <set>
 #include <memory>
 
 #include "coordinates.h"
@@ -17,17 +18,21 @@ public:
 
   Stop();
   Stop(const std::string& name, const Coordinates& coord) : name_(name), coord_(coord) {}
-  Stop(const Stop& other) = default;
-  Stop(Stop&& other) = default;
-  Stop& operator=(const Stop& other) = default;
-  Stop& operator=(Stop&& other) = default;
+  Stop(const Stop& other);
+  Stop(Stop&& other) noexcept;
+  Stop& operator=(const Stop& other);
+  Stop& operator=(Stop&& other) noexcept;
 
   std::string GetName() const;
   Coordinates GetCoord() const;
 
+  void AddRoute(const std::string& route_name);
+  std::vector<std::string> TakeRoutes() const;
+
 private:
   std::string name_;
   Coordinates coord_;
+  std::set<std::string> routes_for_stop;
 };
 
 class Route {
@@ -98,7 +103,8 @@ class Database {
 public:
   Database() = default;
   void AddStop(const Stop &stop);
-  std::shared_ptr<Stop> TakeStop(const std::string &stop_name);
+  std::shared_ptr<Stop> TakeOrAddStop(const std::string &stop_name);
+  std::shared_ptr<Stop> TakeStop(const std::string &stop_name) const;
   void AddRoute(const std::string& route_name, std::shared_ptr<Route> route);
   std::shared_ptr<Route> TakeRoute(const std::string &route_name) const;
 private:

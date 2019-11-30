@@ -39,6 +39,8 @@ RequestHolder Request::Create(Request::Type type) {
     return std::make_unique<AddStopRequest>();
   case Request::Type::TAKE_ROUTE:
     return std::make_unique<TakeRouteRequest>();
+  case Request::Type::TAKE_STOP:
+    return std::make_unique<TakeStopRequest>();
   default:
     return nullptr;
   }
@@ -112,11 +114,44 @@ TakeRouteAnswer TakeRouteRequest::Process(const Database &db) const {
 std::string TakeRouteRequest::StringAnswer(const TakeRouteAnswer &result) const {
   std::stringstream s;
   if (result.has_value) {
-    s << std::setprecision(6) << "Bus " << result.name << ": " << result.stops_count << " stops on route, " <<
+    s << std::setprecision(6) << "Bus " << result.route_name << ": " << result.stops_count << " stops on route, " <<
       result.unique_stops_count << " unique stops, " << result.length << " route length";
   }
   else {
-    s << "Bus " << result.name << ": not found";
+    s << "Bus " << result.route_name << ": not found";
+  }
+  return s.str();
+}
+
+void TakeStopRequest::ParseFrom(std::string_view input) {
+  stop_name = input;
+}
+
+TakeStopAnswer TakeStopRequest::Process(const Database &db) const {
+  auto stop = db.TakeStop(stop_name);
+  if (stop) {
+    return {true, stop_name, stop->TakeRoutes()};
+  }
+  else {
+    return {false, stop_name, {}};
+  }
+}
+
+std::string TakeStopRequest::StringAnswer(const TakeStopAnswer &result) const {
+  std::stringstream s;
+  if (result.in_base) {
+    if (result.names.empty()) {
+      s << "Stop " << result.stop_name << ": no buses";
+    }
+    else {
+      s << "Stop " << result.stop_name << ": buses";
+      for (const auto& route : result.names) {
+        s << " " << route;
+      }
+    }
+  }
+  else {
+    s << "Stop " << result.stop_name << ": not found";
   }
   return s.str();
 }

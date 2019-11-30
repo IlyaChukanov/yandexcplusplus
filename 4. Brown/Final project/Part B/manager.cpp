@@ -18,7 +18,7 @@ std::vector<std::string> DatabaseManager::ProcessAllRequests(std::istream& in) {
     std::string raw_request;
     std::getline(in, raw_request);
     auto answer = ProcessModifyRequest(raw_request);
-    std::cerr << answer << std::endl;
+    //std::cerr << answer << std::endl;
   }
 
   const size_t COUNT_OF_READ = ReadNumberOnLine<int>(in);
@@ -27,7 +27,7 @@ std::vector<std::string> DatabaseManager::ProcessAllRequests(std::istream& in) {
     std::string raw_request;
     std::getline(in, raw_request);
     auto answer = ProcessReadRequest(raw_request);
-    std::cerr << answer << std::endl;
+    //std::cerr << answer << std::endl;
     results.push_back(std::move(answer));
   }
   return results;
@@ -56,6 +56,11 @@ std::string DatabaseManager::MakeAnswerFromAnyRequest(RequestHolder request) {
     const auto& cast_request = dynamic_cast<ModifyRequest&>(*request);
     cast_request.Process(db_);
     return "Route added";
+  }
+  case Request::Type::TAKE_STOP: {
+    const auto& cast_request = dynamic_cast<ReadRequest<TakeStopAnswer>&>(*request);
+    const auto result = cast_request.Process(db_);
+    return cast_request.StringAnswer(result);
   }
   default:
     return "error";
@@ -100,6 +105,9 @@ RequestHolder DatabaseManager::ParseReadRequest(std::string_view request_str) {
   if (type == "Bus") {
     return ParseTakeRoute(request_str.substr(first_space + 1));
   }
+  if (type == "Stop") {
+    return ParseTakeStop(request_str.substr(first_space + 1));
+  }
   else {
     return nullptr;
   }
@@ -107,6 +115,14 @@ RequestHolder DatabaseManager::ParseReadRequest(std::string_view request_str) {
 
 RequestHolder DatabaseManager::ParseTakeRoute(std::string_view request_str) {
   auto request_ptr = Request::Create(Request::Type::TAKE_ROUTE);
+  if (request_ptr) {
+    request_ptr->ParseFrom(request_str);
+  }
+  return request_ptr;
+}
+
+RequestHolder DatabaseManager::ParseTakeStop(std::string_view request_str) {
+  auto request_ptr = Request::Create(Request::Type::TAKE_STOP);
   if (request_ptr) {
     request_ptr->ParseFrom(request_str);
   }
