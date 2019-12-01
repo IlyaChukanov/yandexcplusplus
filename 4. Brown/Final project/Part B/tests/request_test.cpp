@@ -30,38 +30,6 @@ TEST(TestModifyRequest, TestAddStopRequest2) {
   ASSERT_DOUBLE_EQ(stop->GetCoord().GetLongitude(), 33.33);
 }
 
-TEST(TestModifyRequest, TestAddStopRequest3) {
-  auto req = std::make_unique<AddStopRequest>();
-  ASSERT_EQ(req->GetType(), Request::Type::ADD_STOP);
-  std::string request{"S1: 22.22, 33.33, 1m to S2, 2m to S3, 3.3m to S4"};
-  req->ParseFrom(request);
-  Database db;
-  req->Process(db);
-  auto stop = db.TakeStop("S1");
-  ASSERT_EQ(stop->GetName(), "S1");
-  ASSERT_DOUBLE_EQ(stop->GetCoord().GetLatitude(), 22.22);
-  ASSERT_DOUBLE_EQ(stop->GetCoord().GetLongitude(), 33.33);
-  ASSERT_FALSE(stop->distance_to_stop.empty());
-  ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S2"), 1);
-  ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S3"), 2);
-  ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S4"), 3.3);
-}
-
-TEST(TestModifyRequest, TestAddStopRequest4) {
-  auto req = std::make_unique<AddStopRequest>();
-  ASSERT_EQ(req->GetType(), Request::Type::ADD_STOP);
-  std::string request{"S1: 22.22, 33.33, 1m to S2"};
-  req->ParseFrom(request);
-  Database db;
-  req->Process(db);
-  auto stop = db.TakeStop("S1");
-  ASSERT_EQ(stop->GetName(), "S1");
-  ASSERT_DOUBLE_EQ(stop->GetCoord().GetLatitude(), 22.22);
-  ASSERT_DOUBLE_EQ(stop->GetCoord().GetLongitude(), 33.33);
-  ASSERT_FALSE(stop->distance_to_stop.empty());
-  ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S2"), 1);
-}
-
 TEST(TestModifyRequest, TestAddRouteRequest1) {
   auto req = std::make_unique<AddRouteRequest>();
   ASSERT_EQ(req->GetType(), Request::Type::ADD_ROUTE);
@@ -132,7 +100,7 @@ TEST(TestReadRequest, TestTakeRoute1) {
   req->ParseFrom(route_name);
   auto answer = req->Process(db);
   ASSERT_EQ(answer.has_value, true);
-  std::string answer_str = "Bus Bus1: 4 stops on route, 3 unique stops, 0 route length, 1 curvature";
+  std::string answer_str = "Bus Bus1: 4 stops on route, 3 unique stops, 0 route length";
   ASSERT_EQ(req->StringAnswer(answer), answer_str);
 }
 
