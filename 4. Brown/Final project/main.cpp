@@ -6,7 +6,7 @@
 int main() {
   Database db;
   DatabaseManager dm(db);
-  auto result = dm.ProcessAllRequests();
-  PrintResults(result);
+  auto result = dm.ProcessAllJSONRequests();
+  std::cout << result << std::endl;
   return 0;
 }
