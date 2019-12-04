@@ -251,3 +251,4 @@ RequestHolder DatabaseManager::JSONTakeStop(const Json::Node &node) {
   }
   return request_ptr;
 }
+

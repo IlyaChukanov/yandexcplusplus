@@ -43,10 +43,11 @@ public:
   using Request::Request;
   virtual Result Process(const Database& db) const = 0;
   void ParseFrom(std::string_view input) override = 0;
+  void ParseFromJSON(const Json::Node& node) override = 0;
   virtual std::string StringAnswer(const Result& result) const = 0;
   virtual std::string JSONAnswer(const Result& result) const = 0;
 protected:
-  int64_t request_id;
+  int64_t request_id = 0;
 };
 
 class ModifyRequest : public Request {

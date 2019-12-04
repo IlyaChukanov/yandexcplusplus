@@ -33,13 +33,12 @@ namespace Json {
   }
 
   Node LoadNumber(istream& input) {
-    int64_t result_integer = 0;
-    int is_neg = 1;
+    /*int64_t result_integer = 0;
+    double is_neg = 1;
     if (input.peek() == '-') {
       input.get();
       is_neg = -1;
     }
-    
     while (isdigit(input.peek())) {
       result_integer *= 10;
       result_integer += input.get() - '0';
@@ -52,11 +51,16 @@ namespace Json {
         result_fraction += (input.get() - '0') * 1.0 / divide;
         divide *= 10;
       }
-      std::cerr << "int: " << result_integer << " fract: " << result_fraction << std::endl;
-      return Node(static_cast<double>(is_neg * static_cast<double>(result_integer) + result_fraction));
+      // FOR DEBUG
+      auto res = static_cast<double>(is_neg * (static_cast<double>(result_integer) + result_fraction));
+      return Node(static_cast<double>(is_neg * (static_cast<double>(result_integer) + result_fraction)));
     }
-    std::cerr << "Int: " << result_integer << std::endl;
-    return Node(static_cast<int64_t>(is_neg * result_integer));
+    // FOR DEBUG
+    auto res = static_cast<int64_t >(is_neg * result_integer);
+    return Node(static_cast<int64_t >(is_neg * result_integer));*/
+    double result;
+    input >> result;
+    return Node(result);
   }
 
   bool IsLetter(char c) {
@@ -116,5 +120,5 @@ namespace Json {
   Document Load(istream& input) {
     return Document{LoadNode(input)};
   }
-
 }
+

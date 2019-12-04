@@ -25,13 +25,19 @@ namespace Json {
       return std::get<std::map<std::string, Node>>(*this);
     }
     double AsInt64() const {
-      return std::get<int64_t>(*this);
+      return static_cast<int64_t>(std::get<double>(*this));
     }
     double AsDouble() const {
-      std::cerr << "Double problem" << std::endl;
+      /*if (auto check = std::get_if<double>(this)) {
+        return *check;
+      }
+      if (auto check = std::get_if<int64_t>(this)) {
+        return static_cast<double>(*check);
+      }*/
       return std::get<double>(*this);
     }
-    double AsBool() const {
+
+    bool AsBool() const {
       return std::get<bool>(*this);
     }
     const auto& AsString() const {

@@ -61,7 +61,7 @@ std::vector<std::string> Stop::TakeRoutes() const {
 double Route::Curvature() const {
   double len = Length();
   double real = RealLength();
-  return (len) ? real / len : 1;
+  return (len != 0) ? real / len : 1;
 }
 
 std::string Route::GetName() const {

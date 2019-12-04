@@ -69,7 +69,7 @@ void AddStopRequest::ParseFromJSON(const Json::Node &node) {
   longitude = map_elem["longitude"].AsDouble();
   auto distance_map = map_elem["road_distances"].AsMap();
   for (const auto& [key, value] : distance_map) {
-    distances.emplace_back(key, value.AsInt64());
+    distances.emplace_back(key, value.AsDouble());
   }
 }
 
@@ -166,7 +166,7 @@ std::string TakeRouteRequest::JSONAnswer(const TakeRouteAnswer &result) const {
     s << R"("stop_count": )" << result.stops_count << ", ";
     s << R"("unique_stop_count": )" << result.unique_stops_count  << ", ";
     s << R"("route_length": )" << std::setprecision(6) << result.length << ", ";
-    s << R"("curvature": )" << std::setprecision(6) << result.curvature;
+    s << R"("curvature": )" << std::setprecision(10) << result.curvature;
     s << "}";
   }
   else {
