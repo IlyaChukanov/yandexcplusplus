@@ -45,9 +45,9 @@ public:
   void ParseFrom(std::string_view input) override = 0;
   void ParseFromJSON(const Json::Node& node) override = 0;
   virtual std::string StringAnswer(const Result& result) const = 0;
-  virtual std::string JSONAnswer(const Result& result) const = 0;
+  virtual Json::Node JSONAnswer(const Result& result) const = 0;
 protected:
-  int64_t request_id = 0;
+  int request_id = 0;
 };
 
 class ModifyRequest : public Request {
@@ -66,7 +66,7 @@ public:
 private:
   std::string stop_name;
   double latitude, longitude;
-  std::vector<std::pair<std::string, double>> distances;
+  std::vector<std::pair<std::string, int>> distances;
 };
 
 class AddRouteRequest : public ModifyRequest {
@@ -82,7 +82,7 @@ private:
 };
 
 struct TakeRouteAnswer {
-  int64_t id;
+  int id;
   bool has_value;
   std::string route_name;
   size_t stops_count;
@@ -98,13 +98,13 @@ public:
   void ParseFromJSON(const Json::Node& node) override;
   TakeRouteAnswer Process(const Database& db) const override;
   std::string StringAnswer(const TakeRouteAnswer& result) const override;
-  std::string JSONAnswer(const TakeRouteAnswer& result) const override;
+  Json::Node JSONAnswer(const TakeRouteAnswer& result) const override;
 private:
   std::string route_name;
 };
 
 struct TakeStopAnswer {
-  int64_t id;
+  int id;
   bool in_base;
   std::string stop_name;
   std::vector<std::string> names;
@@ -117,7 +117,7 @@ public:
   void ParseFromJSON(const Json::Node& node) override;
   TakeStopAnswer Process(const Database& db) const override;
   std::string StringAnswer(const TakeStopAnswer& result) const override;
-  std::string JSONAnswer(const TakeStopAnswer& result) const override;
+  Json::Node JSONAnswer(const TakeStopAnswer& result) const override;
 private:
   std::string stop_name;
 };

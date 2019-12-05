@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <set>
 #include <memory>
-
+#include "json.h"
 #include "coordinates.h"
 
 class Stop {
@@ -19,7 +19,7 @@ public:
 
   Stop();
   Stop(std::string  name, const Coordinates& coord);
-  Stop(std::string  name, const Coordinates& coord, const std::vector<std::pair<std::string, double>>& distances);
+  Stop(std::string  name, const Coordinates& coord, const std::vector<std::pair<std::string, int>>& distances);
   Stop(const Stop& other);
   Stop(Stop&& other) noexcept;
   Stop& operator=(const Stop& other);
@@ -31,7 +31,7 @@ public:
   void AddRoute(const std::string& route_name);
   std::vector<std::string> TakeRoutes() const;
 
-  std::unordered_map<std::string, double> distance_to_stop;
+  std::unordered_map<std::string, int> distance_to_stop;
 private:
   std::string name_;
   Coordinates coord_;
@@ -116,6 +116,7 @@ public:
 
   void AddRoute(const std::string& route_name, std::shared_ptr<Route> route);
   std::shared_ptr<Route> TakeRoute(const std::string &route_name) const;
+  Json::Node node_;
 private:
   StopData stops_;
   RouteData routes_;

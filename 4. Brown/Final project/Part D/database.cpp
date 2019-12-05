@@ -5,12 +5,14 @@
 #include "database.h"
 
 #include <utility>
+#include <cassert>
 
 Stop::Stop() {
   name_ = "unnamed";
 }
 Stop::Stop(std::string  name, const Coordinates& coord) : name_(std::move(name)), coord_(coord) {}
-Stop::Stop(std::string  name, const Coordinates& coord, const std::vector<std::pair<std::string, double>>& distances) : name_(std::move(name)), coord_(coord) {
+
+Stop::Stop(std::string  name, const Coordinates& coord, const std::vector<std::pair<std::string, int>>& distances) : name_(std::move(name)), coord_(coord) {
   for (const auto& [key, value] : distances) {
     distance_to_stop[key] = value;
   }
@@ -59,9 +61,7 @@ std::vector<std::string> Stop::TakeRoutes() const {
 }
 
 double Route::Curvature() const {
-  double len = Length();
-  double real = RealLength();
-  return (len != 0) ? real / len : 1;
+  return RealLength() / Length();
 }
 
 std::string Route::GetName() const {
@@ -146,16 +146,22 @@ double CycleRoute::Length() const {
 }
 
 void Database::AddStop(const Stop &stop) {
-  /*if (stops_.count(stop.GetName())) {
+  if (stops_.count(stop.GetName())) {
     (*stops_.at(stop.GetName())) = stop;
+    for (const auto& [stop, distance] : stop.distance_to_stop) {
+      auto new_stop = TakeOrAddStop(stop);
+      if (new_stop->distance_to_stop.count(stop.GetName())) {
+
+      }
+    }
   }
   else {
     stops_.insert({stop.GetName(), std::make_shared<Stop>(stop)});
-  }*/
-  auto iter = stops_.try_emplace(stop.GetName(), std::make_shared<Stop>(stop));
+  }
+  /*auto iter = stops_.try_emplace(stop.GetName(), std::make_shared<Stop>(stop));
   if (!iter.second) {
     *(iter.first->second) = stop;
-  }
+  }*/
 }
 
 std::shared_ptr<Stop> Database::TakeOrAddStop(const std::string &stop_name) {
@@ -220,4 +226,3 @@ std::shared_ptr<Route> RouteBuilder::MakeLinear(RouteInfo&& info) {
   }
   return std::make_shared<LinearRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
 }
-

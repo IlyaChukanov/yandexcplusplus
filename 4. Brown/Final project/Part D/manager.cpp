@@ -19,7 +19,6 @@ std::vector<std::string> DatabaseManager::ProcessAllRequests(std::istream& in) {
     std::string raw_request;
     std::getline(in, raw_request);
     auto answer = ProcessModifyRequest(raw_request);
-    //std::cerr << answer << std::endl;
   }
 
   const size_t COUNT_OF_READ = ReadNumberOnLine<int>(in);
@@ -28,7 +27,6 @@ std::vector<std::string> DatabaseManager::ProcessAllRequests(std::istream& in) {
     std::string raw_request;
     std::getline(in, raw_request);
     auto answer = ProcessReadRequest(raw_request);
-    //std::cerr << answer << std::endl;
     results.push_back(std::move(answer));
   }
   return results;
@@ -130,44 +128,37 @@ RequestHolder DatabaseManager::ParseTakeStop(std::string_view request_str) {
   return request_ptr;
 }
 
-std::string DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
+Json::Node DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
   auto doc = Json::Load(in);
-  auto global_type_map = doc.GetRoot().AsMap();
-  std::string modify_type = "base_requests";
-  Json::Node modify_requests = global_type_map[modify_type];
-  std::string read_type = "stat_requests";
-  Json::Node read_requests = global_type_map[read_type];
+  db_.node_ = doc.GetRoot();
+  auto global_type_map = db_.node_.AsMap();
+
+  const std::string modify_type = "base_requests";
+  Json::Node modify_requests = global_type_map.at(modify_type);
+
+  const std::string read_type = "stat_requests";
+  Json::Node read_requests = global_type_map.at(read_type);
 
   for (const auto& node : modify_requests.AsArray()) {
     ProcessModifyRequestJSON(node);
   }
-  std::vector<std::string> result;
+
+  std::vector<Json::Node> result;
   for (const auto& node : read_requests.AsArray()) {
     result.push_back(ProcessReadRequestJSON(node));
   }
-  std::stringstream output;
-  output << "[";
-  for (size_t i = 0; i < result.size(); ++i) {
-    if (!i) {
-      output << result[i];
-    }
-    else {
-      output << ", " << result[i];
-    }
-  }
-  output << "]";
-  return output.str();
+  return Json::Node(result);
 }
 
-std::string DatabaseManager::ProcessModifyRequestJSON(const Json::Node &node) {
+Json::Node DatabaseManager::ProcessModifyRequestJSON(const Json::Node &node) {
   return MakeJSONAnswerFromAnyRequest(ParseModifyJSONRequest(node));
 }
 
-std::string DatabaseManager::ProcessReadRequestJSON(const Json::Node &node) {
+Json::Node DatabaseManager::ProcessReadRequestJSON(const Json::Node &node) {
   return MakeJSONAnswerFromAnyRequest(ParseReadJSONRequest(node));
 }
 
-std::string DatabaseManager::MakeJSONAnswerFromAnyRequest(RequestHolder request) {
+Json::Node DatabaseManager::MakeJSONAnswerFromAnyRequest(RequestHolder request) {
   switch (request->GetType()) {
   case Request::Type::TAKE_ROUTE: {
     const auto& cast_request = dynamic_cast<ReadRequest<TakeRouteAnswer>&>(*request);
@@ -177,12 +168,12 @@ std::string DatabaseManager::MakeJSONAnswerFromAnyRequest(RequestHolder request)
   case Request::Type::ADD_STOP: {
     const auto& cast_request = dynamic_cast<ModifyRequest&>(*request);
     cast_request.Process(db_);
-    return "Stop added";
+    return Json::Node("Stop added");
   }
   case Request::Type::ADD_ROUTE: {
     const auto& cast_request = dynamic_cast<ModifyRequest&>(*request);
     cast_request.Process(db_);
-    return "Route added";
+    return Json::Node("Route added");
   }
   case Request::Type::TAKE_STOP: {
     const auto& cast_request = dynamic_cast<ReadRequest<TakeStopAnswer>&>(*request);
@@ -190,7 +181,7 @@ std::string DatabaseManager::MakeJSONAnswerFromAnyRequest(RequestHolder request)
     return cast_request.JSONAnswer(result);
   }
   default:
-    return "error";
+    return Json::Node("error");
   }
 }
 
@@ -207,16 +198,16 @@ RequestHolder DatabaseManager::ParseModifyJSONRequest(const Json::Node &node) {
   }
 }
 
-RequestHolder DatabaseManager::JSONAddRoute(const Json::Node &node) {
-  auto request_ptr = Request::Create(Request::Type::ADD_ROUTE);
+RequestHolder DatabaseManager::JSONAddStop(const Json::Node &node) {
+  auto request_ptr = Request::Create(Request::Type::ADD_STOP);
   if (request_ptr) {
     request_ptr->ParseFromJSON(node);
   }
   return request_ptr;
 }
 
-RequestHolder DatabaseManager::JSONAddStop(const Json::Node &node) {
-  auto request_ptr = Request::Create(Request::Type::ADD_STOP);
+RequestHolder DatabaseManager::JSONAddRoute(const Json::Node &node) {
+  auto request_ptr = Request::Create(Request::Type::ADD_ROUTE);
   if (request_ptr) {
     request_ptr->ParseFromJSON(node);
   }
@@ -251,4 +242,3 @@ RequestHolder DatabaseManager::JSONTakeStop(const Json::Node &node) {
   }
   return request_ptr;
 }
-

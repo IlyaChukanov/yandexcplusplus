@@ -15,6 +15,7 @@
 #include "database.h"
 
 void PrintResults(const std::vector<std::string>& results, std::ostream& out = std::cout);
+void PrintJsonResults(const Json::Node& results, std::ostream& out = std::cout);
 
 class DatabaseManager {
 public:
@@ -25,17 +26,18 @@ public:
   std::string ProcessReadRequest(const std::string& read);
   std::string ProcessModifyRequest(const std::string& modify);
 
-  std::string ProcessAllJSONRequests(std::istream& in = std::cin);
-  std::string ProcessReadRequestJSON(const Json::Node& node);
-  std::string ProcessModifyRequestJSON(const Json::Node& node);
-
   std::string MakeAnswerFromAnyRequest(RequestHolder request);
   RequestHolder ParseModifyRequest(std::string_view request_str);
   RequestHolder ParseReadRequest(std::string_view request_str);
 
-  std::string MakeJSONAnswerFromAnyRequest(RequestHolder request);
+  Json::Node ProcessAllJSONRequests(std::istream& in = std::cin);
+  Json::Node ProcessReadRequestJSON(const Json::Node& node);
+  Json::Node ProcessModifyRequestJSON(const Json::Node& node);
+
+  Json::Node MakeJSONAnswerFromAnyRequest(RequestHolder request);
   RequestHolder ParseModifyJSONRequest(const Json::Node& node);
   RequestHolder ParseReadJSONRequest(const Json::Node& node);
+
 private:
   template <typename Number>
   Number ReadNumberOnLine(std::istream& stream);

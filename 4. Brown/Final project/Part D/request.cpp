@@ -4,6 +4,9 @@
 #include <sstream>
 #include <iomanip>
 #include <unordered_map>
+#include <map>
+#include <cassert>
+#include "json.h"
 #include "request.h"
 
 std::vector<std::string> SplitBy(std::string_view s, char split) {
@@ -63,21 +66,24 @@ void AddStopRequest::ParseFrom(std::string_view input) {
 }
 
 void AddStopRequest::ParseFromJSON(const Json::Node &node) {
-  auto map_elem = node.AsMap();
-  stop_name = map_elem["name"].AsString();
-  latitude = map_elem["latitude"].AsDouble();
-  longitude = map_elem["longitude"].AsDouble();
-  auto distance_map = map_elem["road_distances"].AsMap();
-  for (const auto& [key, value] : distance_map) {
-    distances.emplace_back(key, value.AsDouble());
+  const auto& map_elem = node.AsMap();
+  stop_name = map_elem.at("name").AsString();
+  latitude = map_elem.at("latitude").AsDouble();
+  longitude = map_elem.at("longitude").AsDouble();
+  if (map_elem.count("road_distances")) {
+    const auto& distance_map = map_elem.at("road_distances").AsMap();
+    for (const auto& [key, value] : distance_map) {
+      std::string name = key;
+      int distance = value.AsInt();
+      distances.emplace_back(name, distance);
+    }
   }
 }
 
-void AddStopRequest::Process(Database &db) const {
+void AddStopRequest::Process(Database &db ) const {
   db.AddStop({stop_name,
              CoordinatesBuilder().SetLatitude(latitude).SetLongitude(longitude).Build(), distances});
 }
-
 
 void AddRouteRequest::ParseFrom(std::string_view input) {
   size_t delim_name = input.find(':');
@@ -112,12 +118,14 @@ void AddRouteRequest::ParseFrom(std::string_view input) {
 }
 
 void AddRouteRequest::ParseFromJSON(const Json::Node &node) {
-  auto map_elem = node.AsMap();
-  route_name = map_elem["name"].AsString();
-  route_type = map_elem["is_roundtrip"].AsBool() ? Route::RouteTypes::CYCLE : Route::RouteTypes::LINEAR;
-  auto stops = map_elem["stops"].AsArray();
-  for (const auto& stop : stops) {
-    stops_name.push_back(stop.AsString());
+  const auto& map_elem = node.AsMap();
+  route_name = map_elem.at("name").AsString();
+  route_type = map_elem.at("is_roundtrip").AsBool() ? Route::RouteTypes::CYCLE : Route::RouteTypes::LINEAR;
+  if (map_elem.count("stops")) {
+    const auto& stops = map_elem.at("stops").AsArray();
+    for (const auto& stop : stops) {
+      stops_name.push_back(stop.AsString());
+    }
   }
 }
 
@@ -131,18 +139,31 @@ void TakeRouteRequest::ParseFrom(std::string_view input) {
 }
 
 void TakeRouteRequest::ParseFromJSON(const Json::Node &node) {
-  auto map_elem = node.AsMap();
-  route_name = map_elem["name"].AsString();
-  request_id = map_elem["id"].AsInt64();
+  const auto& map_elem = node.AsMap();
+  route_name = map_elem.at("name").AsString();
+  request_id = map_elem.at("id").AsInt();
 }
 
 TakeRouteAnswer TakeRouteRequest::Process(const Database &db) const {
   auto route = db.TakeRoute(route_name);
   if (route) {
+    /*std::cerr << "----" << std::endl;
+    std::cerr << "rid " << request_id << std::endl;
+    std::cerr << "rname " << route_name << std::endl;
+    std::cerr << "cs " << route->CountOfStops() << std::endl;
+    std::cerr << "cus " << route->CountOfUniqueStops() << std::endl;
+    std::cerr << "real length " << route->RealLength() << std::endl;
+    std::cerr << "length " << route->Length() << std::endl;
+    std::cerr << "curvutare " << route->Curvature() << std::endl;
+    std::cerr << "#######################################" << std::endl;
+    Json::PrintNode(db.node_, std::cerr);
+    std::cerr << "#######################################" << std::endl;
+    double a = route->Curvature();
+    assert(a >= 1.38196 || a <= 1.38176);*/
     return {request_id, true, route_name, route->CountOfStops(), route->CountOfUniqueStops(), route->RealLength(), route->Curvature()};
   }
   else {
-    return {request_id, false, route_name, 0, 0, 0};
+    return {request_id, false, route_name, 0, 0, 0, 0};
   }
 }
 
@@ -158,24 +179,19 @@ std::string TakeRouteRequest::StringAnswer(const TakeRouteAnswer &result) const 
   return s.str();
 }
 
-std::string TakeRouteRequest::JSONAnswer(const TakeRouteAnswer &result) const {
-  std::stringstream s;
+Json::Node TakeRouteRequest::JSONAnswer(const TakeRouteAnswer &result) const {
+  std::map<std::string, Json::Node> answer;
+  answer["request_id"] = Json::Node(result.id);
   if (result.has_value) {
-    s << "{";
-    s << R"("request_id": )" << result.id << ", ";
-    s << R"("stop_count": )" << result.stops_count << ", ";
-    s << R"("unique_stop_count": )" << result.unique_stops_count  << ", ";
-    s << R"("route_length": )" << std::setprecision(6) << result.length << ", ";
-    s << R"("curvature": )" << std::setprecision(10) << result.curvature;
-    s << "}";
+    answer["stop_count"] = Json::Node(static_cast<int>(result.stops_count));
+    answer["unique_stop_count"] = Json::Node(static_cast<int>(result.unique_stops_count));
+    answer["route_length"] = Json::Node(result.length);
+    answer["curvature"] = Json::Node(result.curvature);
   }
   else {
-    s << "{";
-    s << R"("request_id": )" << result.id << ", ";
-    s << R"("error_message": "not found")";
-    s << "}";
+    answer["error_message"] = Json::Node(std::string("not found"));
   }
-  return s.str();
+  return Json::Node(answer);
 }
 
 void TakeStopRequest::ParseFrom(std::string_view input) {
@@ -183,9 +199,9 @@ void TakeStopRequest::ParseFrom(std::string_view input) {
 }
 
 void TakeStopRequest::ParseFromJSON(const Json::Node &node) {
-  auto map_elem = node.AsMap();
-  stop_name = map_elem["name"].AsString();
-  request_id = map_elem["id"].AsInt64();
+  const auto& map_elem = node.AsMap();
+  stop_name = map_elem.at("name").AsString();
+  request_id = map_elem.at("id").AsInt();
 }
 
 TakeStopAnswer TakeStopRequest::Process(const Database &db) const {
@@ -217,36 +233,35 @@ std::string TakeStopRequest::StringAnswer(const TakeStopAnswer &result) const {
   return s.str();
 }
 
-std::string TakeStopRequest::JSONAnswer(const TakeStopAnswer &result) const {
-  std::stringstream s;
+Json::Node TakeStopRequest::JSONAnswer(const TakeStopAnswer &result) const {
+  std::map<std::string, Json::Node> answer;
+  answer["request_id"] = Json::Node(result.id);
   if (result.in_base) {
     if (result.names.empty()) {
-      s << "{";
-      s << R"("request_id": )" << result.id << ", ";
-      s << R"("buses": [])";
-      s << "}";
+      answer["buses"] = Json::Node(std::vector<Json::Node>());
     }
     else {
-      s << "{";
-      s << R"("request_id": )" << result.id << ", ";
-      s << R"("buses": [)";
+      std::vector<Json::Node> bufer;
+      bufer.resize(result.names.size());
       for (size_t i = 0; i < result.names.size(); ++i) {
-        if (!i) {
-          s << "\"" << result.names[i] << "\"";
-        }
-        else {
-          s << ", " << "\"" << result.names[i] << "\"";
-        }
+        bufer[i] = Json::Node(std::string(result.names[i]));
       }
-      s << "]";
-      s << "}";
+      answer["buses"] = std::move(Json::Node(bufer));
     }
   }
   else {
-    s << "{";
-    s << R"("request_id": )" << result.id << ", ";
-    s << R"("error_message": "not found")";
-    s << "}";
+    answer["error_message"] = Json::Node(std::string("not found"));
   }
-  return s.str();
+  return Json::Node(answer);
 }
+/*
+{"base_requests":[{"latitude": 0.5, "longitude": -1, "name": "A", "road_distances": {"B": 100000}, "type": "Stop"},
+                  {"latitude": 0, "longitude": -1.1, "name": "B", "road_distances": {}, "type": "Stop"},
+                  {"is_roundtrip": false, "name": "256", "stops": ["B", "A"], "type": "Bus"}],
+
+ "stat_requests": [{"id": 955255848, "name": "256", "type": "Bus"},
+                   {"id": 1493551208, "name": "A", "type": "Stop"},
+                   {"id": 1444286119, "name": "B", "type": "Stop"},
+                   {"id": 1748016107, "name": "C", "type": "Stop"}]
+}
+*/
