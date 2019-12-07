@@ -130,8 +130,7 @@ RequestHolder DatabaseManager::ParseTakeStop(std::string_view request_str) {
 
 Json::Node DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
   auto doc = Json::Load(in);
-  db_.node_ = doc.GetRoot();
-  auto global_type_map = db_.node_.AsMap();
+  auto global_type_map = doc.GetRoot().AsMap();
 
   const std::string modify_type = "base_requests";
   Json::Node modify_requests = global_type_map.at(modify_type);

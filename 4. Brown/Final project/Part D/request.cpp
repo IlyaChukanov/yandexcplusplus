@@ -254,14 +254,3 @@ Json::Node TakeStopRequest::JSONAnswer(const TakeStopAnswer &result) const {
   }
   return Json::Node(answer);
 }
-/*
-{"base_requests":[{"latitude": 0.5, "longitude": -1, "name": "A", "road_distances": {"B": 100000}, "type": "Stop"},
-                  {"latitude": 0, "longitude": -1.1, "name": "B", "road_distances": {}, "type": "Stop"},
-                  {"is_roundtrip": false, "name": "256", "stops": ["B", "A"], "type": "Bus"}],
-
- "stat_requests": [{"id": 955255848, "name": "256", "type": "Bus"},
-                   {"id": 1493551208, "name": "A", "type": "Stop"},
-                   {"id": 1444286119, "name": "B", "type": "Stop"},
-                   {"id": 1748016107, "name": "C", "type": "Stop"}]
-}
-*/

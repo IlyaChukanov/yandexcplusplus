@@ -116,7 +116,6 @@ public:
 
   void AddRoute(const std::string& route_name, std::shared_ptr<Route> route);
   std::shared_ptr<Route> TakeRoute(const std::string &route_name) const;
-  Json::Node node_;
 private:
   StopData stops_;
   RouteData routes_;

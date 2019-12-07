@@ -84,25 +84,25 @@ double LinearRoute::RealLength() const {
   double result = 0;
   for (size_t i = 0; i < stops_.size() - 1; ++i) {
     // Вычисление расстояние от А к Б
-    bool is_same_length = true;
     if(stops_[i]->distance_to_stop.count(stops_[i + 1]->GetName())) {
       result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
-      is_same_length = true;
+    }
+    else if (stops_[i + 1]->distance_to_stop.count(stops_[i]->GetName())) {
+      result += stops_[i + 1]->distance_to_stop.at(stops_[i]->GetName());
     }
     else {
       result += Coordinates::Distance(stops_[i]->GetCoord(), stops_[i + 1]->GetCoord());
-      is_same_length = false;
     }
 
     // Вычисление расстояния от Б к А
-    if(stops_[i + 1]->distance_to_stop.count(stops_[i]->GetName())) {
+    if (stops_[i + 1]->distance_to_stop.count(stops_[i]->GetName())) {
       result += stops_[i + 1]->distance_to_stop.at(stops_[i]->GetName());
     }
-    else if (is_same_length) {
+    else if(stops_[i]->distance_to_stop.count(stops_[i + 1]->GetName())) {
       result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
     }
     else {
-      result += Coordinates::Distance(stops_[i + 1]->GetCoord(), stops_[i]->GetCoord());
+      result += Coordinates::Distance(stops_[i]->GetCoord(), stops_[i + 1]->GetCoord());
     }
   }
   return result;
@@ -146,22 +146,17 @@ double CycleRoute::Length() const {
 }
 
 void Database::AddStop(const Stop &stop) {
-  if (stops_.count(stop.GetName())) {
-    (*stops_.at(stop.GetName())) = stop;
-    for (const auto& [stop, distance] : stop.distance_to_stop) {
-      auto new_stop = TakeOrAddStop(stop);
-      if (new_stop->distance_to_stop.count(stop.GetName())) {
-
-      }
-    }
+  std::string stop_name = stop.GetName();
+  /*if (stops_.count(stop_name)) {
+    (*stops_.at(stop_name)) = stop;
   }
   else {
     stops_.insert({stop.GetName(), std::make_shared<Stop>(stop)});
-  }
-  /*auto iter = stops_.try_emplace(stop.GetName(), std::make_shared<Stop>(stop));
+  }*/
+  auto iter = stops_.try_emplace(stop.GetName(), std::make_shared<Stop>(stop));
   if (!iter.second) {
     *(iter.first->second) = stop;
-  }*/
+  }
 }
 
 std::shared_ptr<Stop> Database::TakeOrAddStop(const std::string &stop_name) {

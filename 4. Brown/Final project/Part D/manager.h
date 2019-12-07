@@ -15,7 +15,6 @@
 #include "database.h"
 
 void PrintResults(const std::vector<std::string>& results, std::ostream& out = std::cout);
-void PrintJsonResults(const Json::Node& results, std::ostream& out = std::cout);
 
 class DatabaseManager {
 public:
