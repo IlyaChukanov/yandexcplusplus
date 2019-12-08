@@ -38,7 +38,7 @@ TEST(TestOneRequest, AddStop3) {
 TEST(TestOneRequest, AddStop4) {
   Database db;
   DatabaseManager dm(db);
-  dm.ProcessModifyRequest("Stop S1: 1.1, 2.2, 2000m to S2, 3000m to S3, 115.15m to S4");
+  dm.ProcessModifyRequest("Stop S1: 1.1, 2.2, 2000m to S2, 3000m to S3, 115m to S4");
   auto stop = db.TakeStop("S1");
   ASSERT_EQ(stop->GetName(), "S1");
   ASSERT_EQ(stop->GetCoord().GetLatitude(), 1.1);
@@ -46,7 +46,7 @@ TEST(TestOneRequest, AddStop4) {
   ASSERT_FALSE(stop->distance_to_stop.empty());
   ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S2"), 2000);
   ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S3"), 3000);
-  ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S4"), 115.15);
+  ASSERT_DOUBLE_EQ(stop->distance_to_stop.at("S4"), 115);
 }
 
 TEST(TestOneRequest, ChangeStop) {
@@ -323,8 +323,8 @@ Stop Biryulyovo Zapadnoye)";
   std::stringstream s(input);
   auto res = dm.ProcessAllRequests(s);
   std::vector<std::string> answers = {
-      {"Bus 256: 6 stops on route, 5 unique stops, 5950 route length, 1.361239 curvature"},
-      {"Bus 750: 5 stops on route, 3 unique stops, 27600 route length, 1.318084 curvature"},
+      {"Bus 256: 6 stops on route, 5 unique stops, 5950 route length, 1.36124 curvature"},
+      {"Bus 750: 5 stops on route, 3 unique stops, 27600 route length, 1.31808 curvature"},
       {"Bus 751: not found"},
       {"Stop Samara: not found"},
       {"Stop Prazhskaya: no buses"},
