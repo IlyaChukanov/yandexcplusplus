@@ -110,15 +110,21 @@ Json::Node DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
   auto doc = Json::Load(in);
   auto global_type_map = doc.GetRoot().AsMap();
 
+  const std::string params_type = "routing_settings";
+  Json::Node params_request = global_type_map.at(params_type);
+
+  db_.params_.velocity = params_request.AsMap().at("bus_velocity").AsInt();
+  db_.params_.waiting_time = params_request.AsMap().at("bus_wait_time").AsInt();
+
   const std::string modify_type = "base_requests";
   Json::Node modify_requests = global_type_map.at(modify_type);
-
-  const std::string read_type = "stat_requests";
-  Json::Node read_requests = global_type_map.at(read_type);
 
   for (const auto& node : modify_requests.AsArray()) {
     ProcessJSONModifyRequest(node);
   }
+
+  const std::string read_type = "stat_requests";
+  Json::Node read_requests = global_type_map.at(read_type);
 
   std::vector<Json::Node> result;
   for (const auto& node : read_requests.AsArray()) {

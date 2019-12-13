@@ -61,7 +61,7 @@ public:
 class AddStopRequest : public ModifyRequest {
 public:
   AddStopRequest() : ModifyRequest(Request::Type::ADD_STOP) {}
-  void ParseFrom(std::string_view input);
+  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   void Process(Database& db) const override;
 private:
@@ -73,7 +73,7 @@ private:
 class AddRouteRequest : public ModifyRequest {
 public:
   AddRouteRequest() : ModifyRequest(Request::Type::ADD_ROUTE) {}
-  void ParseFrom(std::string_view input);
+  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   void Process(Database& db) const override;
 private:
@@ -95,7 +95,7 @@ struct TakeRouteAnswer {
 class TakeRouteRequest : public ReadRequest<TakeRouteAnswer> {
 public:
   TakeRouteRequest() : ReadRequest(Request::Type::TAKE_ROUTE) {}
-  void ParseFrom(std::string_view input);
+  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   TakeRouteAnswer Process(const Database& db) const override;
   std::string StringAnswer(const TakeRouteAnswer& result) const override;
@@ -114,7 +114,7 @@ struct TakeStopAnswer {
 class TakeStopRequest : public ReadRequest<TakeStopAnswer> {
 public:
   TakeStopRequest() : ReadRequest(Request::Type::TAKE_STOP) {}
-  void ParseFrom(std::string_view input);
+  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   TakeStopAnswer Process(const Database& db) const override;
   std::string StringAnswer(const TakeStopAnswer& result) const override;
@@ -130,15 +130,15 @@ struct CreateRouteAnswer {
   std::vector<std::string> names;
 };
 
-/*class CreateRouteRequest : public ReadRequest<CreateRouteAnswer> {
+class CreateRouteRequest : public ReadRequest<CreateRouteAnswer> {
 public:
   CreateRouteRequest() : ReadRequest(Request::Type::TAKE_STOP) {}
-  void ParseFrom(std::string_view input);
+  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   CreateRouteAnswer Process(const Database& db) const override;
   std::string StringAnswer(const CreateRouteAnswer& result) const override;
   Json::Node JSONAnswer(const CreateRouteAnswer& result) const override;
 private:
   std::string stop_name;
-};*/
+};
 #endif //YANDEXYELLOWFINAL_4_BROWN_FINAL_PROJECT_PART_A_REQUEST_H

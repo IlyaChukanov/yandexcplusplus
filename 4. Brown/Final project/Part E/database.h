@@ -11,6 +11,10 @@
 #include <unordered_set>
 #include <set>
 #include <memory>
+#include <list>
+
+#include "graph.h"
+#include "router.h"
 #include "json.h"
 #include "coordinates.h"
 
@@ -105,20 +109,74 @@ struct RouteInfo {
   std::vector<std::string> stop_names;
 };
 
+enum class NodeType {WAIT, BUS};
+
+struct BaseNode {
+  NodeType type;
+};
+
+struct WaitNode : public BaseNode {
+  std::string stop_name;
+  int time;
+};
+
+struct BusNode : public BaseNode {
+  std::string route_name;
+  int span_count;
+  double time;
+};
+
 class Database {
   using StopData = std::unordered_map<std::string, std::shared_ptr<Stop>>;
   using RouteData = std::unordered_map<std::string, std::shared_ptr<Route>>;
+  using WeightType = double;
+
+  template <typename Weight>
+  struct GraphCache {
+    bool is_outdated = true;
+    Graph::DirectedWeightedGraph<Weight> wgraph;
+    std::unique_ptr<Graph::Router<Weight>> router = nullptr;
+  };
+  struct RoutingParam {
+    int velocity;
+    int waiting_time;
+  };
 public:
-  Database() = default;
+  Database();
   void AddStop(const Stop &stop);
   std::shared_ptr<Stop> TakeOrAddStop(const std::string &stop_name);
   std::shared_ptr<Stop> TakeStop(const std::string &stop_name) const;
 
   void AddRoute(const std::string& route_name, std::shared_ptr<Route> route);
   std::shared_ptr<Route> TakeRoute(const std::string &route_name) const;
+
+  std::list<BaseNode> CreateRoute(std::string_view first_stop, std::string_view second_stop) const {
+    if (gcache.is_outdated) {
+      gcache.wgraph = UpdateGraph();
+      gcache.router = std::make_unique<Graph::Router<WeightType>>(gcache.wgraph);
+      gcache.is_outdated = false;
+    }
+    auto edge_list = gcache.router->BuildRoute(name_to_vertex_id.at(first_stop),
+                                           name_to_vertex_id.at(second_stop));
+  }
+
+  RoutingParam params_;
 private:
+  Graph::DirectedWeightedGraph<WeightType> UpdateGraph() const {
+    auto new_wgraph = Graph::DirectedWeightedGraph<WeightType>(stops_.size());
+    for (const auto& [stop_name, stop_ptr] : stops_) {
+      for (const auto& [another_stop_name, distance] : stop_ptr->distance_to_stop) {
+        new_wgraph.AddEdge({name_to_vertex_id.at(stop_name), name_to_vertex_id.at(another_stop_name),
+                                 (params_.waiting_time * 1.0 + distance * 1.0 / params_.velocity)});
+      }
+    }
+    return new_wgraph;
+  }
+
+  mutable GraphCache<WeightType> gcache;
   StopData stops_;
   RouteData routes_;
+  std::unordered_map<std::string_view, Graph::VertexId> name_to_vertex_id;
 };
 
 class RouteBuilder {
@@ -133,6 +191,5 @@ private:
   std::shared_ptr<Route> MakeCycle(RouteInfo&& info);
   std::shared_ptr<Route> MakeLinear(RouteInfo&& info);
 };
-
 
 #endif //YANDEXCPLUSPLUS_4_BROWN_FINAL_PROJECT_PART_A_DATABASE_H

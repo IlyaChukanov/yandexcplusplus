@@ -21,26 +21,34 @@ Stop::Stop(std::string  name, const Coordinates& coord, const std::vector<std::p
 Stop::Stop(const Stop &other) {
   name_ = other.name_;
   coord_ = other.coord_;
-  distance_to_stop = other.distance_to_stop;
+  for (const auto& [stop_name, distance] : other.distance_to_stop) {
+    distance_to_stop[stop_name] = distance;
+  }
 }
 
 Stop::Stop(Stop &&other) noexcept {
   name_ = std::move(other.name_);
   coord_ = other.coord_;
-  distance_to_stop = std::move(other.distance_to_stop);
+  for (auto& [stop_name, distance] : other.distance_to_stop) {
+    distance_to_stop[std::move(stop_name)] = std::move(distance);
+  }
 }
 
 Stop& Stop::operator=(const Stop &other) {
   name_ = other.name_;
   coord_ = other.coord_;
-  distance_to_stop = other.distance_to_stop;
+  for (const auto& [stop_name, distance] : other.distance_to_stop) {
+    distance_to_stop[stop_name] = distance;
+  }
   return *this;
 }
 
 Stop& Stop::operator=(Stop &&other) noexcept {
   name_ = std::move(other.name_);
   coord_ = other.coord_;
-  distance_to_stop = std::move(other.distance_to_stop);
+  for (auto& [stop_name, distance] : other.distance_to_stop) {
+    distance_to_stop[std::move(stop_name)] = std::move(distance);
+  }
   return *this;
 }
 
@@ -83,27 +91,8 @@ size_t LinearRoute::CountOfUniqueStops() const {
 double LinearRoute::RealLength() const {
   double result = 0;
   for (size_t i = 0; i < stops_.size() - 1; ++i) {
-    // Вычисление расстояние от А к Б
-    if(stops_[i]->distance_to_stop.count(stops_[i + 1]->GetName())) {
-      result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
-    }
-    else if (stops_[i + 1]->distance_to_stop.count(stops_[i]->GetName())) {
-      result += stops_[i + 1]->distance_to_stop.at(stops_[i]->GetName());
-    }
-    else {
-      result += Coordinates::Distance(stops_[i]->GetCoord(), stops_[i + 1]->GetCoord());
-    }
-
-    // Вычисление расстояния от Б к А
-    if (stops_[i + 1]->distance_to_stop.count(stops_[i]->GetName())) {
-      result += stops_[i + 1]->distance_to_stop.at(stops_[i]->GetName());
-    }
-    else if(stops_[i]->distance_to_stop.count(stops_[i + 1]->GetName())) {
-      result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
-    }
-    else {
-      result += Coordinates::Distance(stops_[i]->GetCoord(), stops_[i + 1]->GetCoord());
-    }
+    result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName()) +
+              stops_[i + 1]->distance_to_stop.at(stops_[i]->GetName());
   }
   return result;
 }
@@ -127,12 +116,7 @@ size_t CycleRoute::CountOfUniqueStops() const {
 double CycleRoute::RealLength() const {
   double result = 0;
   for (size_t i = 0; i < stops_.size() - 1; ++i) {
-    if(stops_[i]->distance_to_stop.count(stops_[i + 1]->GetName())) {
-      result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
-    }
-    else {
-      result += Coordinates::Distance(stops_[i]->GetCoord(), stops_[i + 1]->GetCoord());
-    }
+    result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
   }
   return result;
 }
@@ -146,22 +130,33 @@ double CycleRoute::Length() const {
 }
 
 void Database::AddStop(const Stop &stop) {
-  std::string stop_name = stop.GetName();
-  /*if (stops_.count(stop_name)) {
-    (*stops_.at(stop_name)) = stop;
+  gcache.is_outdated = true;
+  auto inserted = stops_.try_emplace(stop.GetName(), std::make_shared<Stop>(stop));
+  if (!inserted.second) {
+    *(inserted.first->second) = stop;
   }
   else {
-    stops_.insert({stop.GetName(), std::make_shared<Stop>(stop)});
-  }*/
-  auto iter = stops_.try_emplace(stop.GetName(), std::make_shared<Stop>(stop));
-  if (!iter.second) {
-    *(iter.first->second) = stop;
+    auto last_idx = name_to_vertex_id.size();
+    name_to_vertex_id[inserted.first->first] = last_idx;
+  }
+  for (const auto& [stop_name, distance] : stop.distance_to_stop) {
+    auto curr_stop = TakeOrAddStop(stop_name);
+    if (!curr_stop->distance_to_stop.count(stop.GetName())) {
+      curr_stop->distance_to_stop[stop.GetName()] = distance;
+    }
   }
 }
 
+Database::Database() {
+  params_ = {1, 1};
+}
+
 std::shared_ptr<Stop> Database::TakeOrAddStop(const std::string &stop_name) {
+  gcache.is_outdated = true;
   if (!stops_.count(stop_name)) {
-    stops_.insert({stop_name, std::make_shared<Stop>(stop_name, Coordinates())});
+    auto inserted = stops_.insert({stop_name, std::make_shared<Stop>(stop_name, Coordinates())});
+    auto last_idx = name_to_vertex_id.size();
+    name_to_vertex_id[inserted.first->first] = last_idx;
   }
   return stops_.at(stop_name);
 }
@@ -174,6 +169,7 @@ std::shared_ptr<Stop> Database::TakeStop(const std::string &stop_name) const {
 }
 
 void Database::AddRoute(const std::string& route_name, std::shared_ptr<Route> route) {
+  gcache.is_outdated = true;
   for (const auto& stop_name : route->GetStopsName()) {
     stops_[stop_name]->AddRoute(route_name);
   }

@@ -45,7 +45,7 @@ RequestHolder Request::Create(Request::Type type) {
   case Request::Type::TAKE_STOP:
     return std::make_unique<TakeStopRequest>();
   case Request::Type::CREATE_ROUTE:
-    //return std::make_unique<CreateRouteRequest>();
+    return std::make_unique<CreateRouteRequest>();
   default:
     return nullptr;
   }
@@ -255,4 +255,24 @@ Json::Node TakeStopRequest::JSONAnswer(const TakeStopAnswer &result) const {
     answer["error_message"] = Json::Node(std::string("not found"));
   }
   return Json::Node(answer);
+}
+
+void CreateRouteRequest::ParseFrom(std::string_view input) {
+
+}
+
+void CreateRouteRequest::ParseFromJSON(const Json::Node &node) {
+
+}
+
+CreateRouteAnswer CreateRouteRequest::Process(const Database &db) const {
+
+}
+
+std::string CreateRouteRequest::StringAnswer(const CreateRouteAnswer &result) const {
+
+}
+
+Json::Node CreateRouteRequest::JSONAnswer(const CreateRouteAnswer &result) const {
+
 }
