@@ -126,19 +126,20 @@ private:
 struct CreateRouteAnswer {
   int id;
   bool has_route;
-  std::string stop_name;
-  std::vector<std::string> names;
+  double total_time;
+  std::list<std::unique_ptr<BaseNode>> nodes;
 };
 
 class CreateRouteRequest : public ReadRequest<CreateRouteAnswer> {
 public:
-  CreateRouteRequest() : ReadRequest(Request::Type::TAKE_STOP) {}
+  CreateRouteRequest() : ReadRequest(Request::Type::CREATE_ROUTE) {}
   void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   CreateRouteAnswer Process(const Database& db) const override;
   std::string StringAnswer(const CreateRouteAnswer& result) const override;
   Json::Node JSONAnswer(const CreateRouteAnswer& result) const override;
 private:
-  std::string stop_name;
+  std::string from;
+  std::string to;
 };
 #endif //YANDEXYELLOWFINAL_4_BROWN_FINAL_PROJECT_PART_A_REQUEST_H

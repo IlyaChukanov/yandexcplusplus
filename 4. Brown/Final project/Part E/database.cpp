@@ -135,10 +135,6 @@ void Database::AddStop(const Stop &stop) {
   if (!inserted.second) {
     *(inserted.first->second) = stop;
   }
-  else {
-    auto last_idx = name_to_vertex_id.size();
-    name_to_vertex_id[inserted.first->first] = last_idx;
-  }
   for (const auto& [stop_name, distance] : stop.distance_to_stop) {
     auto curr_stop = TakeOrAddStop(stop_name);
     if (!curr_stop->distance_to_stop.count(stop.GetName())) {
@@ -155,8 +151,6 @@ std::shared_ptr<Stop> Database::TakeOrAddStop(const std::string &stop_name) {
   gcache.is_outdated = true;
   if (!stops_.count(stop_name)) {
     auto inserted = stops_.insert({stop_name, std::make_shared<Stop>(stop_name, Coordinates())});
-    auto last_idx = name_to_vertex_id.size();
-    name_to_vertex_id[inserted.first->first] = last_idx;
   }
   return stops_.at(stop_name);
 }

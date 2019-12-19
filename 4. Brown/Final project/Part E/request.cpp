@@ -149,19 +149,6 @@ void TakeRouteRequest::ParseFromJSON(const Json::Node &node) {
 TakeRouteAnswer TakeRouteRequest::Process(const Database &db) const {
   auto route = db.TakeRoute(route_name);
   if (route) {
-    /*std::cerr << "----" << std::endl;
-    std::cerr << "rid " << request_id << std::endl;
-    std::cerr << "rname " << route_name << std::endl;
-    std::cerr << "cs " << route->CountOfStops() << std::endl;
-    std::cerr << "cus " << route->CountOfUniqueStops() << std::endl;
-    std::cerr << "real length " << route->RealLength() << std::endl;
-    std::cerr << "length " << route->Length() << std::endl;
-    std::cerr << "curvutare " << route->Curvature() << std::endl;
-    std::cerr << "#######################################" << std::endl;
-    Json::PrintNode(db.node_, std::cerr);
-    std::cerr << "#######################################" << std::endl;
-    double a = route->Curvature();
-    assert(a >= 1.38196 || a <= 1.38176);*/
     return {request_id, true, route_name, route->CountOfStops(), route->CountOfUniqueStops(), route->RealLength(), route->Curvature()};
   }
   else {
@@ -257,22 +244,51 @@ Json::Node TakeStopRequest::JSONAnswer(const TakeStopAnswer &result) const {
   return Json::Node(answer);
 }
 
-void CreateRouteRequest::ParseFrom(std::string_view input) {
-
-}
-
 void CreateRouteRequest::ParseFromJSON(const Json::Node &node) {
-
+  const auto& map_elem = node.AsMap();
+  from = map_elem.at("from").AsString();
+  to = map_elem.at("to").AsString();
+  request_id = map_elem.at("id").AsInt();
 }
+
+void CreateRouteRequest::ParseFrom(std::string_view input) {}
 
 CreateRouteAnswer CreateRouteRequest::Process(const Database &db) const {
-
+  auto nodes = db.CreateRoute(from, to);
+  auto first = dynamic_cast<InfoNode&>(*nodes.front());
+  nodes.pop_front();
+  if (!first.total_time) {
+    return {request_id, false, {}};
+  }
+  return {request_id, true, first.total_time.value(), std::move(nodes)};
 }
 
-std::string CreateRouteRequest::StringAnswer(const CreateRouteAnswer &result) const {
-
-}
+std::string CreateRouteRequest::StringAnswer(const CreateRouteAnswer &result) const {}
 
 Json::Node CreateRouteRequest::JSONAnswer(const CreateRouteAnswer &result) const {
-
+  std::map<std::string, Json::Node> answer;
+  answer["request_id"] = Json::Node(result.id);
+  answer["total_time"] = Json::Node(result.total_time);
+  std::vector<Json::Node> items;
+  for (const auto& node : result.nodes) {
+    if (node->type == NodeType::WAIT) {
+      auto node_wait = dynamic_cast<WaitNode&>(*node);
+      std::map<std::string, Json::Node> wait_ans;
+      wait_ans["type"] = Json::Node(std::string("Wait"));
+      wait_ans["stop_name"] = Json::Node(node_wait.stop_name);
+      wait_ans["time"] = Json::Node(node_wait.time);
+      items.emplace_back(wait_ans);
+    }
+    if (node->type == NodeType::BUS) {
+      auto node_bus = dynamic_cast<BusNode&>(*node);
+      std::map<std::string, Json::Node> bus_ans;
+      bus_ans["type"] = Json::Node(std::string("Bus"));
+      bus_ans["bus"] = Json::Node(node_bus.route_name);
+      bus_ans["span_count"] = Json::Node(node_bus.span_count);
+      bus_ans["time"] = Json::Node(node_bus.time);
+      items.emplace_back(bus_ans);
+    }
+  }
+  answer["items"] = Json::Node(items);
+  return answer;
 }

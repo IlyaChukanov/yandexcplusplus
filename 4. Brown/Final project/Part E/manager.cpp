@@ -105,7 +105,6 @@ RequestHolder DatabaseManager::ParseRequest(RequestType type, std::string_view r
   return request_ptr;
 }
 
-
 Json::Node DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
   auto doc = Json::Load(in);
   auto global_type_map = doc.GetRoot().AsMap();
@@ -113,7 +112,7 @@ Json::Node DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
   const std::string params_type = "routing_settings";
   Json::Node params_request = global_type_map.at(params_type);
 
-  db_.params_.velocity = params_request.AsMap().at("bus_velocity").AsInt();
+  db_.params_.velocity = params_request.AsMap().at("bus_velocity").AsInt() * 1000.0 / 60.0;
   db_.params_.waiting_time = params_request.AsMap().at("bus_wait_time").AsInt();
 
   const std::string modify_type = "base_requests";
