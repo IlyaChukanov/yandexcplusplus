@@ -260,6 +260,9 @@ CreateRouteAnswer CreateRouteRequest::Process(const Database &db) const {
   if (!first.total_time) {
     return {request_id, false, {}};
   }
+  if (!nodes.empty()) {
+    nodes.pop_back();
+  }
   return {request_id, true, first.total_time.value(), std::move(nodes)};
 }
 
@@ -268,6 +271,10 @@ std::string CreateRouteRequest::StringAnswer(const CreateRouteAnswer &result) co
 Json::Node CreateRouteRequest::JSONAnswer(const CreateRouteAnswer &result) const {
   std::map<std::string, Json::Node> answer;
   answer["request_id"] = Json::Node(result.id);
+  if (!result.has_route) {
+    answer["error_message"] = Json::Node(std::string("not found"));
+    return answer;
+  }
   answer["total_time"] = Json::Node(result.total_time);
   std::vector<Json::Node> items;
   for (const auto& node : result.nodes) {
