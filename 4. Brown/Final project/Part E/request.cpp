@@ -261,7 +261,7 @@ CreateRouteAnswer CreateRouteRequest::Process(const Database &db) const {
     return {request_id, false, {}};
   }
   if (!nodes.empty()) {
-    nodes.pop_back();
+    //nodes.pop_back();
   }
   return {request_id, true, first.total_time.value(), std::move(nodes)};
 }

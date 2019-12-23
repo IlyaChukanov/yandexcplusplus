@@ -1,7 +1,6 @@
 //
 // Created by ilya on 25.11.2019.
 //
-
 #ifndef YANDEXCPLUSPLUS_4_BROWN_FINAL_PROJECT_PART_A_DATABASE_H
 #define YANDEXCPLUSPLUS_4_BROWN_FINAL_PROJECT_PART_A_DATABASE_H
 #include <string>
@@ -156,6 +155,12 @@ class Database {
     bool is_outdated = true;
     Graph::DirectedWeightedGraph<Weight> wgraph;
     std::unique_ptr<Graph::Router<Weight>> router = nullptr;
+    Graph::VertexId curr_id = 0;
+    size_t vertex_count = 0;
+    // Stop Name - Route Name - Id
+    std::unordered_map<std::string, std::vector<Graph::VertexId>> name_to_vertex_id;
+    // Id - Stop_name, Route_name
+    std::unordered_map<Graph::VertexId, std::pair<std::string, std::string>> vertex_id_to_name;
   };
   struct RoutingParam {
     double velocity;
@@ -172,13 +177,20 @@ public:
 
   std::list<std::unique_ptr<BaseNode>> CreateRoute(std::string_view first_stop, std::string_view second_stop) const {
     if (gcache.is_outdated) {
-      gcache.wgraph = UpdateGraph();
-      gcache.router = std::make_unique<Graph::Router<WeightType>>(gcache.wgraph);
+      {
+        //LOG_DURATION("Update graph\n");
+        gcache.wgraph = UpdateGraph();
+      }
+      {
+        //LOG_DURATION("Create router\n");
+        gcache.router = std::make_unique<Graph::Router<WeightType>>(gcache.wgraph);
+      }
       gcache.is_outdated = false;
     }
+    //LOG_DURATION("Create route\n");
     std::list<std::unique_ptr<BaseNode>> nodes;
-    auto route_info = gcache.router->BuildRoute(name_to_vertex_id.at(std::string(first_stop)).front(),
-                                           name_to_vertex_id.at(std::string(second_stop)).front());
+    auto route_info = gcache.router->BuildRoute(gcache.name_to_vertex_id.at(std::string(first_stop)).front(),
+                                                gcache.name_to_vertex_id.at(std::string(second_stop)).front());
     if (!route_info) {
       nodes.push_back(std::move(std::make_unique<InfoNode>(NodeType::INFO)));
       return nodes;
@@ -186,33 +198,41 @@ public:
     nodes.push_back(std::make_unique<InfoNode>(NodeType::INFO, route_info->weight));
     int count = 0;
     double bus_time = 0;
+    std::pair<std::string, std::string> from_stop, to_stop;
     for (size_t i = 0; i < route_info->edge_count; ++i) {
       auto edge_id = gcache.router->GetRouteEdge(route_info->id, i);
       auto edge = gcache.wgraph.GetEdge(edge_id);
-
-      auto from_stop = vertex_id_to_name.at(edge.from);
-      auto to_stop = vertex_id_to_name.at(edge.to);
+      from_stop = gcache.vertex_id_to_name.at(edge.from);
+      to_stop = gcache.vertex_id_to_name.at(edge.to);
       if (from_stop.first == to_stop.first) {
         if (count) {
           nodes.push_back(std::make_unique<BusNode>(NodeType::BUS, from_stop.second, count, bus_time));
           count = 0;
           bus_time = 0;
         }
-        nodes.push_back(std::make_unique<WaitNode>(NodeType::WAIT, from_stop.first, edge.weight));
+        if (edge.weight) {
+          nodes.push_back(std::make_unique<WaitNode>(NodeType::WAIT, from_stop.first, edge.weight));
+        }
       }
       else {
         bus_time += edge.weight;
         count++;
       }
     }
+    if (count) {
+      nodes.push_back(std::make_unique<BusNode>(NodeType::BUS, from_stop.second, count, bus_time));
+      count = 0;
+      bus_time = 0;
+    }
+
+    //route_cache[route_info->id] = nodes;
     return nodes;
   }
 
   RoutingParam params_;
 private:
   Graph::DirectedWeightedGraph<WeightType> UpdateGraph() const {
-    IndexStops();
-    auto new_wgraph = Graph::DirectedWeightedGraph<WeightType>(vertex_count);
+    auto new_wgraph = Graph::DirectedWeightedGraph<WeightType>(gcache.vertex_count);
     // Создание ребер между вершинами конец ожидания - начало ожидания
     for (const auto& [route_name, route_ptr] : routes_) {
       if (route_ptr->route_type == Route::RouteTypes::CYCLE) {
@@ -222,114 +242,97 @@ private:
         MakeWieghtFromLinearRoute(new_wgraph, route_ptr);
       }
     }
-    // Создание ребер между вершинами начало ожидания - конец ожидания
-    for (const auto& [stop_name, stop_ptr] : stops_) {
-      for (size_t i = 1; i < name_to_vertex_id.at(stop_name).size(); ++i) {
-        new_wgraph.AddEdge({name_to_vertex_id.at(stop_name).front(),
-                            name_to_vertex_id.at(stop_name)[i],
-                            params_.waiting_time * 1.0});
-        new_wgraph.AddEdge({name_to_vertex_id.at(stop_name)[i],
-                            name_to_vertex_id.at(stop_name).front(),
-                            0.0});
-        for (size_t j = 1; j < name_to_vertex_id.at(stop_name).size(); ++j) {
-          if (i != j) {
-            new_wgraph.AddEdge({name_to_vertex_id.at(stop_name)[i],
-                                name_to_vertex_id.at(stop_name)[j],
-                                params_.waiting_time * 1.0});
-          }
-        }
-      }
-    }
-
     return new_wgraph;
   }
 
   void MakeWieghtFromCycleRoute(Graph::DirectedWeightedGraph<WeightType>& graph, const std::shared_ptr<Route>& ptr) const {
     auto stop_names = ptr->GetStopsName();
-    AddVertex(stop_names[0], ptr->GetName());
-    auto u = ptr->CountOfUniqueStops();
-    auto s = ptr->CountOfStops();
+    Graph::VertexId first = AddVertex(stop_names[0], ptr->GetName());
+    Graph::VertexId second = 0;
+    AddHubConnection(graph, first, stop_names[0]);
     for (size_t i = 1; i < stop_names.size(); ++i) {
-      auto first = curr_id - 1;
-      auto second = AddVertex(stop_names[i], ptr->GetName());
+      second = AddVertex(stop_names[i], ptr->GetName());
       graph.AddEdge({first,
                      second,
                      stops_.at(stop_names[i - 1])->distance_to_stop.at(stop_names[i]) * 1.0 / params_.velocity});
+      AddHubConnection(graph, second, stop_names[i]);
+      first = second;
     }
-
   }
 
   void MakeWieghtFromLinearRoute(Graph::DirectedWeightedGraph<WeightType>& graph, const std::shared_ptr<Route>& ptr) const {
     auto stop_names = ptr->GetStopsName();
-    AddVertex(stop_names[0], ptr->GetName());
-    AddVertex(stop_names[0], ptr->GetName());
-    for (size_t i = 1; i < stop_names.size() - 1; ++i) {
-      auto first_str = curr_id - 2;
-      auto first_rev = curr_id - 1;
-      auto second_str = AddVertex(stop_names[i], ptr->GetName());
-      auto second_rev = AddVertex(stop_names[i], ptr->GetName());
-      graph.AddEdge({first_str,
-                     second_str,
-                     stops_.at(stop_names[i - 1])->distance_to_stop.at(stop_names[i]) * 1.0 / params_.velocity});
-      graph.AddEdge({first_rev,
-                     second_rev,
-                     stops_.at(stop_names[i])->distance_to_stop.at(stop_names[i - 1]) * 1.0 / params_.velocity});
-    }
-    size_t last = stop_names.size() - 1, prev_last = stop_names.size() - 2;
-    auto first_straight = curr_id - 2;
-    auto first_reverse = curr_id - 1;
-    auto second = AddVertex(stop_names[last], ptr->GetName());
-    graph.AddEdge({first_straight,
-                   second,
-                   stops_.at(stop_names[prev_last])->distance_to_stop.at(stop_names[last]) * 1.0 / params_.velocity});
-    graph.AddEdge({second,
-                   first_reverse,
-                   stops_.at(stop_names[last])->distance_to_stop.at(stop_names[prev_last]) * 1.0 / params_.velocity});
 
+    Graph::VertexId first_str = AddVertex(stop_names[0], ptr->GetName());
+    Graph::VertexId second_str = 0;
+    Graph::VertexId first_rev = 0;
+    Graph::VertexId second_rev = gcache.name_to_vertex_id.at(stop_names[0]).front();
+    AddHubConnection(graph, first_str, stop_names[0]);
+    for (size_t i = 1; i < stop_names.size() - 1; ++i) {
+      {
+        // Добавление прямого маршрута
+        second_str = AddVertex(stop_names[i], ptr->GetName());
+        graph.AddEdge({first_str,
+                       second_str,
+                       stops_.at(stop_names[i - 1])->distance_to_stop.at(stop_names[i]) * 1.0 / params_.velocity});
+        AddHubConnection(graph, second_str, stop_names[i]);
+        first_str = second_str;
+      }
+      {
+        // Добавление обратного маршрута
+        first_rev = AddVertex(stop_names[i], ptr->GetName());
+        graph.AddEdge({first_rev,
+                       second_rev,
+                       stops_.at(stop_names[i])->distance_to_stop.at(stop_names[i - 1]) * 1.0 / params_.velocity});
+        AddHubConnection(graph, first_rev, stop_names[i]);
+        second_rev = first_rev;
+      }
+    }
+    graph.AddEdge({first_str,
+                   gcache.name_to_vertex_id.at(stop_names[stop_names.size() - 1]).front(),
+                   stops_.at(stop_names[stop_names.size() - 2])->distance_to_stop.at(stop_names[stop_names.size() - 1]) * 1.0 / params_.velocity});
+
+    first_rev = AddVertex(stop_names[stop_names.size() - 1], ptr->GetName());
+    graph.AddEdge({first_rev,
+                   second_rev,
+                   stops_.at(stop_names[stop_names.size() - 1])->distance_to_stop.at(stop_names[stop_names.size() - 2]) * 1.0 / params_.velocity});
+    AddHubConnection(graph, first_rev, stop_names[stop_names.size() - 1]);
   }
 
   Graph::VertexId AddVertex(const std::string& stop_name, const std::string& route_name) const {
-    name_to_vertex_id[stop_name].push_back(curr_id);
-    vertex_id_to_name[curr_id++] = {stop_name, route_name};
-    return name_to_vertex_id[stop_name].back();
+    gcache.name_to_vertex_id[stop_name].push_back(gcache.curr_id);
+    gcache.vertex_id_to_name[gcache.curr_id++] = {stop_name, route_name};
+    return gcache.name_to_vertex_id[stop_name].back();
+  }
+
+  void AddHubConnection(Graph::DirectedWeightedGraph<WeightType>& graph, Graph::VertexId vertex_to_connect, const std::string& hub_name) const {
+    graph.AddEdge({gcache.name_to_vertex_id.at(hub_name).front(),
+                   vertex_to_connect,
+                   params_.waiting_time});
+    graph.AddEdge({vertex_to_connect,
+                   gcache.name_to_vertex_id.at(hub_name).front(),
+                   0.0});
   }
 
   void IndexStops() const {
-    curr_id = 0;
-    vertex_count = 0;
-    name_to_vertex_id.clear();
-    vertex_id_to_name.clear();
-    vertex_count += stops_.size();
+    gcache.curr_id = 0;
+    gcache.vertex_count = 0;
+    gcache.name_to_vertex_id.clear();
+    gcache.vertex_id_to_name.clear();
+    gcache.vertex_count += stops_.size();
     for (const auto& [stop_name, stop] : stops_) {
-      name_to_vertex_id[stop->GetName()].push_back(curr_id);
-      vertex_id_to_name[curr_id] = {stop->GetName(), ""};
-      curr_id++;
+      gcache.name_to_vertex_id[stop->GetName()].push_back(gcache.curr_id);
+      gcache.vertex_id_to_name[gcache.curr_id++] = {stop->GetName(), "Hub"};
     }
     for (const auto& [route_name, route] : routes_) {
-      vertex_count += route->CountOfStops();
+      gcache.vertex_count += route->CountOfStops();
     }
   }
 
   StopData stops_;
   RouteData routes_;
 
-  // Struct of Graph
-  // Each node is stop with route mark
-  // For example we have stops A, B, C, D and routes R1: A - B - C and R2: B - C - D
-  // So vertex in our graph will have name [stop_name, route_name] and we will have 6 vertexes
-  // 1. A - R1; 2. B - R1; 3. B - R2; 4. C - R1; 5. C - R2; 6. D - R2
-  // Vertexes is fully different if both stop_name and route_name are different
-  // Vertexes is partly different if they have same stop_name and different route_name
-  // Weight between fully different vertexes is time on road
-  // Weight between partly different vertexes is time for waiting bus
   mutable GraphCache<WeightType> gcache;
-
-  mutable Graph::VertexId curr_id = 0;
-  mutable size_t vertex_count = 0;
-  // Stop Name - Route Name - Id
-  mutable std::unordered_map<std::string, std::vector<Graph::VertexId>> name_to_vertex_id;
-  // Id - Stop_name, Route_name
-  mutable std::unordered_map<Graph::VertexId, std::pair<std::string, std::string>> vertex_id_to_name;
 };
 
 class RouteBuilder {

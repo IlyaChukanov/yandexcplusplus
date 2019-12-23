@@ -141,6 +141,10 @@ void Database::AddStop(const Stop &stop) {
       curr_stop->distance_to_stop[stop.GetName()] = distance;
     }
   }
+  gcache.name_to_vertex_id[stop.GetName()].push_back(gcache.curr_id);
+  gcache.vertex_id_to_name[gcache.curr_id] = {stop.GetName(), "Hub"};
+  gcache.curr_id++;
+  gcache.vertex_count++;
 }
 
 Database::Database() {
@@ -167,6 +171,7 @@ void Database::AddRoute(const std::string& route_name, std::shared_ptr<Route> ro
   for (const auto& stop_name : route->GetStopsName()) {
     stops_[stop_name]->AddRoute(route_name);
   }
+  gcache.vertex_count += route->CountOfStops();
   routes_[route_name] = std::move(route);
 }
 
