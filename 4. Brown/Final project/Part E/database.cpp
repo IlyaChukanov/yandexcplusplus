@@ -5,7 +5,6 @@
 #include "database.h"
 
 #include <utility>
-#include <cassert>
 
 Stop::Stop() {
   name_ = "unnamed";
@@ -141,10 +140,6 @@ void Database::AddStop(const Stop &stop) {
       curr_stop->distance_to_stop[stop.GetName()] = distance;
     }
   }
-  gcache.name_to_vertex_id[stop.GetName()].push_back(gcache.curr_id);
-  gcache.vertex_id_to_name[gcache.curr_id] = {stop.GetName(), "Hub"};
-  gcache.curr_id++;
-  gcache.vertex_count++;
 }
 
 Database::Database() {
@@ -171,7 +166,6 @@ void Database::AddRoute(const std::string& route_name, std::shared_ptr<Route> ro
   for (const auto& stop_name : route->GetStopsName()) {
     stops_[stop_name]->AddRoute(route_name);
   }
-  gcache.vertex_count += route->CountOfStops();
   routes_[route_name] = std::move(route);
 }
 
@@ -200,7 +194,6 @@ std::shared_ptr<Route> RouteBuilder::MakeCycle(RouteInfo&& info) {
   stops_ptr.reserve(info.stop_names.size());
   for(auto& str : info.stop_names) {
     auto stop = db_.TakeOrAddStop(str);
-    //stop->AddRoute(info.name);
     stops_ptr.push_back(std::move(stop));
   }
   return std::make_shared<CycleRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
@@ -211,8 +204,117 @@ std::shared_ptr<Route> RouteBuilder::MakeLinear(RouteInfo&& info) {
   stops_ptr.reserve(info.stop_names.size());
   for(auto& str : info.stop_names) {
     auto stop = db_.TakeOrAddStop(str);
-    //stop->AddRoute(info.name);
     stops_ptr.push_back(std::move(stop));
   }
   return std::make_shared<LinearRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
+}
+
+std::list<std::unique_ptr<BaseNode>> Database::CreateRoute(const std::string& first_stop,
+                                                           const std::string& second_stop) const {
+  if (gcache.is_outdated) {
+    gcache.wgraph = UpdateGraph();
+    gcache.router = std::make_unique<Graph::Router<WeightType>>(gcache.wgraph);
+    gcache.is_outdated = false;
+  }
+  auto route = gcache.router->BuildRoute(gcache.name_to_vertex_id.at(first_stop).first,
+                                     gcache.name_to_vertex_id.at(second_stop).first);
+  std::list<std::unique_ptr<BaseNode>> nodes;
+  if (!route) {
+    nodes.push_back(std::make_unique<InfoNode>());
+    return nodes;
+  }
+  nodes.push_back(std::make_unique<InfoNode>(route->weight));
+  for (size_t i = 0; i < route->edge_count; ++i) {
+    Graph::EdgeId edge_id = gcache.router->GetRouteEdge(route->id, i);
+    Edge edge = gcache.edges.at(edge_id);
+    if (edge.is_wait_edge) {
+      nodes.push_back(std::make_unique<WaitNode>(gcache.vertex_id_to_name.at(edge.from).first,
+                                                    edge.weight));
+    }
+    else {
+      nodes.push_back(std::make_unique<BusNode>(edge.bus_name, edge.span_count, edge.weight));
+    }
+  }
+  return nodes;
+}
+
+Graph::DirectedWeightedGraph<Database::WeightType> Database::UpdateGraph() const {
+  AddStops();
+  auto new_wgraph = Graph::DirectedWeightedGraph<WeightType>(gcache.name_to_vertex_id.size() * 2);
+  for (const auto& [stop_name, stop_ptr] : stops_) {
+    auto from = gcache.name_to_vertex_id.at(stop_name).first;
+    auto to = gcache.name_to_vertex_id.at(stop_name).second;
+    auto edge = new_wgraph.AddEdge({from,
+                               to,
+                               params_.waiting_time});
+    gcache.edges[edge] = {true, params_.waiting_time, 0, "no", from, to};
+  }
+  for (const auto& [route_name, route_ptr] : routes_) {
+    if (route_ptr->route_type == Route::RouteTypes::CYCLE) {
+      MakeWieghtFromCycleRoute(new_wgraph, route_ptr);
+    }
+    if (route_ptr->route_type == Route::RouteTypes::LINEAR) {
+      MakeWieghtFromLinearRoute(new_wgraph, route_ptr);
+    }
+  }
+  return new_wgraph;
+}
+
+void Database::MakeWieghtFromCycleRoute(Graph::DirectedWeightedGraph<WeightType> &graph,
+                                        const std::shared_ptr<Route> &ptr) const {
+  auto stop_names = ptr->GetStopsName();
+  for (size_t i = 0; i < stop_names.size() - 1; ++i) {
+    double accumulate_time = 0;
+    int span_count = 0;
+    for (size_t j = i + 1; j < stop_names.size(); ++j) {
+      accumulate_time += stops_.at(stop_names[j - 1])->distance_to_stop.at(stop_names[j]) * 1.0 / params_.velocity;
+      span_count++;
+      auto from = gcache.name_to_vertex_id.at(stop_names[i]).second;
+      auto to = gcache.name_to_vertex_id.at(stop_names[j]).first;
+      auto edge = graph.AddEdge({from,
+                     to,
+                     accumulate_time});
+      gcache.edges[edge] = {false, accumulate_time, span_count, ptr->GetName(), from, to};
+    }
+  }
+}
+
+void Database::MakeWieghtFromLinearRoute(Graph::DirectedWeightedGraph<WeightType> &graph,
+                                         const std::shared_ptr<Route> &ptr) const {
+  auto stop_names = ptr->GetStopsName();
+  for (int64_t i = 0; i < stop_names.size(); ++i) {
+    double accumulate_time_str = 0;
+    int span_count_str = 0;
+    double accumulate_time_rev = 0;
+    int span_count_rev = 0;
+    for (int64_t j = i - 1; j >= 0; --j) {
+      accumulate_time_rev += stops_.at(stop_names[j + 1])->distance_to_stop.at(stop_names[j]) * 1.0 / params_.velocity;
+      span_count_rev++;
+      auto from = gcache.name_to_vertex_id.at(stop_names[i]).second;
+      auto to = gcache.name_to_vertex_id.at(stop_names[j]).first;
+      auto edge = graph.AddEdge({from,
+                                 to,
+                                 accumulate_time_rev});
+      gcache.edges[edge] = {false, accumulate_time_rev, span_count_rev, ptr->GetName(), from, to};
+    }
+    for (int64_t j = i + 1; j < stop_names.size(); ++j) {
+      accumulate_time_str += stops_.at(stop_names[j - 1])->distance_to_stop.at(stop_names[j]) * 1.0 / params_.velocity;
+      span_count_str++;
+      auto from = gcache.name_to_vertex_id.at(stop_names[i]).second;
+      auto to = gcache.name_to_vertex_id.at(stop_names[j]).first;
+      auto edge = graph.AddEdge({from,
+                                 to,
+                                 accumulate_time_str});
+      gcache.edges[edge] = {false, accumulate_time_str, span_count_str, ptr->GetName(), from, to};
+    }
+  }
+}
+
+void Database::AddStops() const {
+  for (const auto& [stop_name, stop_ptr] : stops_) {
+    gcache.name_to_vertex_id[stop_name] = {gcache.curr_id, gcache.curr_id + 1};
+    gcache.vertex_id_to_name[gcache.curr_id] = {stop_name, "start"};
+    gcache.vertex_id_to_name[gcache.curr_id + 1] = {stop_name, "end"};
+    gcache.curr_id += 2;
+  }
 }

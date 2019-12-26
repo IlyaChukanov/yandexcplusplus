@@ -5,7 +5,6 @@
 #ifndef YANDEXCPLUSPLUS_4_BROWN_FINAL_PROJECT_PART_A_COORDINATES_H
 #define YANDEXCPLUSPLUS_4_BROWN_FINAL_PROJECT_PART_A_COORDINATES_H
 
-// TODO Get и Set лишние
 class Coordinates {
 public:
   Coordinates() = default;
