@@ -4,7 +4,7 @@
 
 #include <fstream>
 #include "gtest/gtest.h"
-#include "svg.cpp"
+#include "svg.h"
 
 TEST(Point, DefaultConstructorTest) {
   Svg::Point a;
@@ -149,16 +149,13 @@ TEST(Color, StringConstructorTest10) {
   ASSERT_EQ(ColorType(Svg::Rgb{0, 0, 0}), "rgb(0,0,0)");
 }
 
-TEST(Main, Test1) {
-
-}
 /*
-
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
 */
+
 int main() {
   Svg::Document svg;
 
@@ -199,6 +196,6 @@ int main() {
           .SetData("C++")
   );
   std::ofstream a("a.svg");
-  if (!a) std::cout << "Файл НЕ создан" << std::endl;
+  if (!a) std::cout << "file not created" << std::endl;
   svg.Render(a);
 }
