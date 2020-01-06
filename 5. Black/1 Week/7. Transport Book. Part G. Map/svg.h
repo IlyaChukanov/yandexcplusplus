@@ -13,8 +13,6 @@
 #include <vector>
 #include <memory>
 
-using namespace std;
-
 namespace Svg {
 
 struct Point {
@@ -28,17 +26,25 @@ struct Rgb {
   uint8_t blue;
 };
 
-using Color = variant<monostate, string, Rgb>;
+struct Rgba {
+  uint8_t red;
+  uint8_t green;
+  uint8_t blue;
+  double alpha;
+};
+
+using Color = std::variant<std::monostate, std::string, Rgb, Rgba>;
 const Color NoneColor{};
 
-void RenderColor(ostream& out, monostate);
-void RenderColor(ostream& out, const string& value);
-void RenderColor(ostream& out, Rgb rgb);
-void RenderColor(ostream& out, const Color& color);
+void RenderColor(std::ostream& out, std::monostate);
+void RenderColor(std::ostream& out, const std::string& value);
+void RenderColor(std::ostream& out, Rgb rgb);
+void RenderColor(std::ostream& out, Rgba rgb);
+void RenderColor(std::ostream& out, const Color& color);
 
 class Object {
 public:
-  virtual void Render(ostream& out) const = 0;
+  virtual void Render(std::ostream& out) const = 0;
   virtual ~Object() = default;
 };
 
@@ -48,16 +54,16 @@ public:
   Owner& SetFillColor(const Color& color);
   Owner& SetStrokeColor(const Color& color);
   Owner& SetStrokeWidth(double value);
-  Owner& SetStrokeLineCap(const string& value);
-  Owner& SetStrokeLineJoin(const string& value);
-  void RenderAttrs(ostream& out) const;
+  Owner& SetStrokeLineCap(const std::string& value);
+  Owner& SetStrokeLineJoin(const std::string& value);
+  void RenderAttrs(std::ostream& out) const;
 
 private:
   Color fill_color_;
   Color stroke_color_;
   double stroke_width_ = 1.0;
-  optional<string> stroke_line_cap_;
-  optional<string> stroke_line_join_;
+  std::optional<std::string> stroke_line_cap_;
+  std::optional<std::string> stroke_line_join_;
 
   Owner& AsOwner();
 };
@@ -66,7 +72,7 @@ class Circle : public Object, public PathProps<Circle> {
 public:
   Circle& SetCenter(Point point);
   Circle& SetRadius(double radius);
-  void Render(ostream& out) const override;
+  void Render(std::ostream& out) const override;
 
 private:
   Point center_;
@@ -76,10 +82,10 @@ private:
 class Polyline : public Object, public PathProps<Polyline> {
 public:
   Polyline& AddPoint(Point point);
-  void Render(ostream& out) const override;
+  void Render(std::ostream& out) const override;
 
 private:
-  vector<Point> points_;
+  std::vector<Point> points_;
 };
 
 class Text : public Object, public PathProps<Text> {
@@ -87,26 +93,27 @@ public:
   Text& SetPoint(Point point);
   Text& SetOffset(Point point);
   Text& SetFontSize(uint32_t size);
-  Text& SetFontFamily(const string& value);
-  Text& SetData(const string& data);
-  void Render(ostream& out) const override;
+  Text& SetFontFamily(const std::string& value);
+  Text& SetData(const std::string& data);
+  void Render(std::ostream& out) const override;
 
 private:
   Point point_;
   Point offset_;
   uint32_t font_size_ = 1;
-  optional<string> font_family_;
-  string data_;
+  std::optional<std::string> font_family_;
+  std::string data_;
 };
 
+using ObjectHolder = std::unique_ptr<Object>;
 class Document : public Object {
 public:
   template <typename ObjectType>
   void Add(ObjectType object);
-  void Render(ostream& out) const override;
-
+  void Render(std::ostream& out) const override;
+  void Clear();
 private:
-  vector<unique_ptr<Object>> objects_;
+  std::vector<ObjectHolder> objects_;
 };
 
 }
