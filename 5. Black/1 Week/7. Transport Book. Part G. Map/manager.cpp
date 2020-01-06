@@ -5,8 +5,9 @@
 #include <sstream>
 #include "manager.h"
 
-void PrintResults(const std::vector<std::string>& results, std::ostream& out) {
-  for (const auto& result : results) {
+namespace TransportDatabase {
+void PrintResults(const std::vector<std::string> &results, std::ostream &out) {
+  for (const auto &result : results) {
     out << result << "\n";
   }
 }
@@ -23,7 +24,7 @@ void DatabaseManager::ChangeDatabase(std::shared_ptr<Database> db) {
   db_ = std::move(db);
 }
 
-std::vector<std::string> DatabaseManager::ProcessAllRequests(std::istream& in) {
+std::vector<std::string> DatabaseManager::ProcessAllRequests(std::istream &in) {
   std::vector<std::string> results;
   const size_t COUNT_OF_MODIFY = ReadNumberOnLine<int>(in);
   results.reserve(COUNT_OF_MODIFY);
@@ -44,37 +45,36 @@ std::vector<std::string> DatabaseManager::ProcessAllRequests(std::istream& in) {
   return results;
 }
 
-std::string DatabaseManager::ProcessReadRequest(const std::string& read) {
+std::string DatabaseManager::ProcessReadRequest(const std::string &read) {
   return MakeAnswerFromAnyRequest(ParseReadRequest(read));
 }
-std::string DatabaseManager::ProcessModifyRequest(const std::string& modify) {
+std::string DatabaseManager::ProcessModifyRequest(const std::string &modify) {
   return MakeAnswerFromAnyRequest(ParseModifyRequest(modify));
 }
 
 std::string DatabaseManager::MakeAnswerFromAnyRequest(RequestHolder request) {
   switch (request->GetType()) {
   case Request::Type::TAKE_ROUTE: {
-    const auto& cast_request = dynamic_cast<ReadRequest<TakeRouteAnswer, Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ReadRequest<TakeRouteAnswer, Database> &>(*request);
     const auto result = cast_request.Process(*db_);
     return cast_request.StringAnswer(result);
   }
   case Request::Type::ADD_STOP: {
-    const auto& cast_request = dynamic_cast<ModifyRequest<Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ModifyRequest<Database> &>(*request);
     cast_request.Process(*db_);
     return "Stop added";
   }
   case Request::Type::ADD_ROUTE: {
-    const auto& cast_request = dynamic_cast<ModifyRequest<Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ModifyRequest<Database> &>(*request);
     cast_request.Process(*db_);
     return "Route added";
   }
   case Request::Type::TAKE_STOP: {
-    const auto& cast_request = dynamic_cast<ReadRequest<TakeStopAnswer, Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ReadRequest<TakeStopAnswer, Database> &>(*request);
     const auto result = cast_request.Process(*db_);
     return cast_request.StringAnswer(result);
   }
-  default:
-    return "error";
+  default:return "error";
   }
 }
 
@@ -84,11 +84,9 @@ RequestHolder DatabaseManager::ParseModifyRequest(std::string_view request_str) 
   std::string_view type = request_str.substr(0, first_space);
   if (type == "Stop") {
     return ParseRequest(Request::Type::ADD_STOP, request_str.substr(first_space + 1));
-  }
-  else if (type == "Bus") {
+  } else if (type == "Bus") {
     return ParseRequest(Request::Type::ADD_ROUTE, request_str.substr(first_space + 1));
-  }
-  else {
+  } else {
     return nullptr;
   }
 }
@@ -102,13 +100,12 @@ RequestHolder DatabaseManager::ParseReadRequest(std::string_view request_str) {
   }
   if (type == "Stop") {
     return ParseRequest(Request::Type::TAKE_STOP, request_str.substr(first_space + 1));
-  }
-  else {
+  } else {
     return nullptr;
   }
 }
 
-template <typename RequestType>
+template<typename RequestType>
 RequestHolder DatabaseManager::ParseRequest(RequestType type, std::string_view request_str) {
   auto request_ptr = Request::Create(type);
   if (request_ptr) {
@@ -124,13 +121,12 @@ Json::Node DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
   Json::Node modify_requests = global_type_map.at(modify_type);
   const std::string params_type = "routing_settings";
   Json::Node params_request = global_type_map.at(params_type);
-  for (const auto& node : modify_requests.AsArray()) {
+  for (const auto &node : modify_requests.AsArray()) {
     ProcessJSONModifyRequest(node);
   }
   RoutingParam rp = {params_request.AsMap().at("bus_velocity").AsDouble(),
                      params_request.AsMap().at("bus_wait_time").AsDouble()};
-  router = std::make_shared<DatabaseRouter>(DatabaseRouter{db_, rp});
-
+  router = std::make_shared<Router>(Router{db_, rp});
 
   router->routing_param.velocity = params_request.AsMap().at("bus_velocity").AsInt();
   router->routing_param.waiting_time = params_request.AsMap().at("bus_wait_time").AsInt();
@@ -139,7 +135,7 @@ Json::Node DatabaseManager::ProcessAllJSONRequests(std::istream &in) {
   Json::Node read_requests = global_type_map.at(read_type);
 
   std::vector<Json::Node> result;
-  for (const auto& node : read_requests.AsArray()) {
+  for (const auto &node : read_requests.AsArray()) {
     result.push_back(ProcessJSONReadRequest(node));
   }
   return Json::Node(result);
@@ -156,32 +152,31 @@ Json::Node DatabaseManager::ProcessJSONReadRequest(const Json::Node &node) {
 Json::Node DatabaseManager::MakeJSONAnswerFromAnyRequest(RequestHolder request) {
   switch (request->GetType()) {
   case Request::Type::ADD_STOP: {
-    const auto& cast_request = dynamic_cast<ModifyRequest<Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ModifyRequest<Database> &>(*request);
     cast_request.Process(*db_);
     return Json::Node("Stop added");
   }
   case Request::Type::ADD_ROUTE: {
-    const auto& cast_request = dynamic_cast<ModifyRequest<Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ModifyRequest<Database> &>(*request);
     cast_request.Process(*db_);
     return Json::Node("Route added");
   }
   case Request::Type::TAKE_ROUTE: {
-    const auto& cast_request = dynamic_cast<ReadRequest<TakeRouteAnswer, Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ReadRequest<TakeRouteAnswer, Database> &>(*request);
     const auto result = cast_request.Process(*db_);
     return cast_request.JSONAnswer(result);
   }
   case Request::Type::TAKE_STOP: {
-    const auto& cast_request = dynamic_cast<ReadRequest<TakeStopAnswer, Database>&>(*request);
+    const auto &cast_request = dynamic_cast<ReadRequest<TakeStopAnswer, Database> &>(*request);
     const auto result = cast_request.Process(*db_);
     return cast_request.JSONAnswer(result);
   }
   case Request::Type::CREATE_ROUTE: {
-    const auto& cast_request = dynamic_cast<ReadRequest<CreateRouteAnswer, DatabaseRouter>&>(*request);
+    const auto &cast_request = dynamic_cast<ReadRequest<CreateRouteAnswer, Router> &>(*request);
     const auto result = cast_request.Process(*router);
     return cast_request.JSONAnswer(result);
   }
-  default:
-    return Json::Node("error");
+  default:return Json::Node("error");
   }
 }
 
@@ -189,11 +184,9 @@ RequestHolder DatabaseManager::ParseModifyJSONRequest(const Json::Node &node) {
   auto type = node.AsMap().at("type").AsString();
   if (type == "Stop") {
     return JSONRequest(Request::Type::ADD_STOP, node);
-  }
-  else if (type == "Bus") {
+  } else if (type == "Bus") {
     return JSONRequest(Request::Type::ADD_ROUTE, node);
-  }
-  else {
+  } else {
     return nullptr;
   }
 }
@@ -202,23 +195,21 @@ RequestHolder DatabaseManager::ParseReadJSONRequest(const Json::Node &node) {
   auto type = node.AsMap().at("type").AsString();
   if (type == "Stop") {
     return JSONRequest(Request::Type::TAKE_STOP, node);
-  }
-  else if (type == "Bus") {
+  } else if (type == "Bus") {
     return JSONRequest(Request::Type::TAKE_ROUTE, node);
-  }
-  else if (type == "Route") {
+  } else if (type == "Route") {
     return JSONRequest(Request::Type::CREATE_ROUTE, node);
-  }
-  else {
+  } else {
     return nullptr;
   }
 }
 
-template <typename RequestType>
+template<typename RequestType>
 RequestHolder DatabaseManager::JSONRequest(RequestType type, const Json::Node &node) {
   auto request_ptr = Request::Create(type);
   if (request_ptr) {
     request_ptr->ParseFromJSON(node);
   }
   return request_ptr;
+}
 }

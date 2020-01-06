@@ -5,11 +5,12 @@
 #include <cmath>
 #include "coordinates.h"
 
+namespace TransportDatabase {
 double Coordinates::GetLatitude() const {
   return latitude_;
 }
 
-double& Coordinates::GetLatitude() {
+double &Coordinates::GetLatitude() {
   return latitude_;
 }
 
@@ -17,15 +18,15 @@ double Coordinates::GetLongitude() const {
   return longitude_;
 }
 
-double& Coordinates::GetLongitude() {
+double &Coordinates::GetLongitude() {
   return longitude_;
 }
 
-double Coordinates::Distance(const Coordinates& from, const Coordinates& to) {
-  double lat_1 = from.latitude_ * PI/180.0;
-  double long_1 = from.longitude_ * PI/180.0;
-  double lat_2 = to.latitude_ * PI/180.0;
-  double long_2 = to.longitude_ * PI/180.0;
+double Coordinates::Distance(const Coordinates &from, const Coordinates &to) {
+  double lat_1 = from.latitude_ * PI / 180.0;
+  double long_1 = from.longitude_ * PI / 180.0;
+  double lat_2 = to.latitude_ * PI / 180.0;
+  double long_2 = to.longitude_ * PI / 180.0;
 
   double delta = std::abs(long_1 - long_2);
   double cos_delta = std::cos(delta);
@@ -46,14 +47,15 @@ double Coordinates::Distance(const Coordinates& from, const Coordinates& to) {
   return distance;
 }
 
-CoordinatesBuilder& CoordinatesBuilder::SetLatitude(double lat) {
+CoordinatesBuilder &CoordinatesBuilder::SetLatitude(double lat) {
   latitude_ = lat;
   return *this;
 }
-CoordinatesBuilder& CoordinatesBuilder::SetLongitude(double longi) {
+CoordinatesBuilder &CoordinatesBuilder::SetLongitude(double longi) {
   longitude_ = longi;
   return *this;
 }
 Coordinates CoordinatesBuilder::Build() const {
   return Coordinates(latitude_, longitude_);
+}
 }

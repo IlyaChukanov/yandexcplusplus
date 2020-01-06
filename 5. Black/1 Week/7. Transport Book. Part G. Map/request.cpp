@@ -9,6 +9,7 @@
 #include "json.h"
 #include "request.h"
 
+namespace TransportDatabase {
 std::vector<std::string> SplitBy(std::string_view s, char split) {
   std::vector<std::string> result;
   auto curr = 0;
@@ -253,7 +254,7 @@ void CreateRouteRequest::ParseFromJSON(const Json::Node &node) {
 
 void CreateRouteRequest::ParseFrom(std::string_view input) {}
 
-CreateRouteAnswer CreateRouteRequest::Process(const DatabaseRouter& db) const {
+CreateRouteAnswer CreateRouteRequest::Process(const Router& db) const {
   auto nodes = db.CreateRoute(from, to);
   auto first = dynamic_cast<InfoNode&>(*nodes.front());
   nodes.pop_front();
@@ -295,4 +296,5 @@ Json::Node CreateRouteRequest::JSONAnswer(const CreateRouteAnswer &result) const
   }
   answer["items"] = Json::Node(items);
   return answer;
+}
 }

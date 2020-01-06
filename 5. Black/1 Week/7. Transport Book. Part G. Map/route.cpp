@@ -6,28 +6,28 @@
 
 #include <utility>
 
-DatabaseRouter::DatabaseRouter() {
+namespace TransportDatabase {
+Router::Router() {
   ChangeRoutingParams({0, 0});
 }
 
-DatabaseRouter::DatabaseRouter(std::shared_ptr<Database> db, const RoutingParam& rp) {
-  ChangeDatabase(std::move(db));
+Router::Router(std::shared_ptr<Database> db, const RoutingParam& rp) : Connector(std::move(db)) {
   ChangeRoutingParams(rp);
   Rebase();
 }
 
-void DatabaseRouter::ChangeDatabase(std::shared_ptr<Database> db) {
-  db_ = std::move(db);
+void Router::ChangeDatabase(std::shared_ptr<Database> db) {
+  Connector::ChangeDatabase(db);
   Rebase();
 }
 
-void DatabaseRouter::ChangeRoutingParams(const RoutingParam &rp) {
+void Router::ChangeRoutingParams(const RoutingParam &rp) {
   routing_param.velocity = rp.velocity;
   routing_param.waiting_time = rp.waiting_time;
 }
 
-std::list<std::unique_ptr<BaseNode>> DatabaseRouter::CreateRoute(const std::string& first_stop,
-                                                           const std::string& second_stop) const {
+std::list<std::unique_ptr<BaseNode>> Router::CreateRoute(const std::string& first_stop,
+                                                         const std::string& second_stop) const {
   if (!graph) throw std::runtime_error("graph in database router not set");
   if (!router) throw std::runtime_error("router in database router not set");
   auto route = router->BuildRoute(name_to_vertex_id.at(first_stop).first,name_to_vertex_id.at(second_stop).first);
@@ -51,11 +51,11 @@ std::list<std::unique_ptr<BaseNode>> DatabaseRouter::CreateRoute(const std::stri
   return nodes;
 }
 
-void DatabaseRouter::UpdateGraph() {
+void Router::UpdateGraph() {
   Rebase();
 }
 
-void DatabaseRouter::Rebase() {
+void Router::Rebase() {
   name_to_vertex_id.clear();
   vertex_id_to_name.clear();
   edges.clear();
@@ -63,10 +63,9 @@ void DatabaseRouter::Rebase() {
   AddStops();
   RebaseGraph();
   RebaseRouter();
-  is_outdated = false;
 }
 
-void DatabaseRouter::RebaseGraph() {
+void Router::RebaseGraph() {
   auto new_graph = Graph::DirectedWeightedGraph<WeightType>(name_to_vertex_id.size() * 2);
   auto& stops = db_->TakeStops();
   for (const auto& [stop_name, stop_ptr] : stops) {
@@ -89,12 +88,12 @@ void DatabaseRouter::RebaseGraph() {
   graph = std::make_unique<Graph::DirectedWeightedGraph<WeightType>>(std::move(new_graph));
 }
 
-void DatabaseRouter::RebaseRouter() {
+void Router::RebaseRouter() {
   router = std::make_unique<Graph::Router<WeightType>>(Graph::Router(*graph));
 }
 
-void DatabaseRouter::MakeWieghtFromCycleRoute(Graph::DirectedWeightedGraph<WeightType> &graph,
-                                        const std::shared_ptr<Route> &ptr) {
+void Router::MakeWieghtFromCycleRoute(Graph::DirectedWeightedGraph<WeightType> &graph,
+                                      const std::shared_ptr<Route> &ptr) {
   auto& stops = db_->TakeStops();
   auto stop_names = ptr->GetStopsName();
   for (size_t i = 0; i < stop_names.size() - 1; ++i) {
@@ -114,8 +113,8 @@ void DatabaseRouter::MakeWieghtFromCycleRoute(Graph::DirectedWeightedGraph<Weigh
 }
 
 // TODO Возможно нужно переделать
-void DatabaseRouter::MakeWieghtFromLinearRoute(Graph::DirectedWeightedGraph<WeightType> &graph,
-                                         const std::shared_ptr<Route> &ptr) {
+void Router::MakeWieghtFromLinearRoute(Graph::DirectedWeightedGraph<WeightType> &graph,
+                                       const std::shared_ptr<Route> &ptr) {
   auto& stops = db_->TakeStops();
   auto stop_names = ptr->GetStopsName();
   for (int64_t i = 0; i < stop_names.size(); ++i) {
@@ -146,7 +145,7 @@ void DatabaseRouter::MakeWieghtFromLinearRoute(Graph::DirectedWeightedGraph<Weig
   }
 }
 
-void DatabaseRouter::AddStops() {
+void Router::AddStops() {
   auto& stops = db_->TakeStops();
   for (const auto& [stop_name, stop_ptr] : stops) {
     name_to_vertex_id[stop_name] = {curr_id, curr_id + 1};
@@ -156,6 +155,7 @@ void DatabaseRouter::AddStops() {
   }
 }
 
-double DatabaseRouter::Velocity() const {
+double Router::Velocity() const {
   return routing_param.velocity * 1000.0 / 60.0;
+}
 }

@@ -11,6 +11,8 @@
 #include "database.h"
 #include "route.h"
 
+namespace TransportDatabase {
+
 std::vector<std::string> SplitBy(std::string_view s, char split = '.');
 std::string Strip(std::string_view str);
 
@@ -132,16 +134,17 @@ struct CreateRouteAnswer {
   std::list<std::unique_ptr<BaseNode>> nodes;
 };
 
-class CreateRouteRequest : public ReadRequest<CreateRouteAnswer, DatabaseRouter> {
+class CreateRouteRequest : public ReadRequest<CreateRouteAnswer, Router> {
 public:
   CreateRouteRequest() : ReadRequest(Request::Type::CREATE_ROUTE) {}
   void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
-  CreateRouteAnswer Process(const DatabaseRouter& db) const override;
+  CreateRouteAnswer Process(const Router& db) const override;
   std::string StringAnswer(const CreateRouteAnswer& result) const override;
   Json::Node JSONAnswer(const CreateRouteAnswer& result) const override;
 private:
   std::string from;
   std::string to;
 };
+}
 #endif //YANDEXYELLOWFINAL_4_BROWN_FINAL_PROJECT_PART_A_REQUEST_H

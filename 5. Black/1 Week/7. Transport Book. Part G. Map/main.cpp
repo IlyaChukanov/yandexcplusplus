@@ -4,7 +4,7 @@
 #include "manager.h"
 #include "json.h"
 int main() {
-  DatabaseManager dm;
+  TransportDatabase::DatabaseManager dm;
   std::cout.precision(6);
   auto result = dm.ProcessAllJSONRequests();
   Json::PrintNode(result, std::cout);

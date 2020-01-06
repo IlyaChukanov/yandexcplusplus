@@ -11,8 +11,9 @@
 
 #include "graph.h"
 #include "dijkstra.h"
-#include "database.h"
+#include "connector.h"
 
+namespace TransportDatabase {
 enum class NodeType {INFO, WAIT, BUS};
 struct BaseNode {
   BaseNode() = default;
@@ -52,7 +53,7 @@ struct RoutingParam {
   double waiting_time;
 };
 
-class DatabaseRouter {
+class Router : public Connector {
   using WeightType = double;
   struct Edge {
     bool is_wait_edge;
@@ -63,17 +64,14 @@ class DatabaseRouter {
     Graph::VertexId to;
   };
 public:
-  DatabaseRouter();
-  DatabaseRouter(std::shared_ptr<Database> db, const RoutingParam& rp);
-  void ChangeDatabase(std::shared_ptr<Database> db);
+  Router();
+  Router(std::shared_ptr<Database> db, const RoutingParam& rp);
+  void ChangeDatabase(std::shared_ptr<Database> db) override;
   void ChangeRoutingParams(const RoutingParam& rp);
   std::list<std::unique_ptr<BaseNode>> CreateRoute(const std::string &first_stop, const std::string &second_stop) const;
   void UpdateGraph();
   RoutingParam routing_param;
 private:
-  std::shared_ptr<Database> db_ = nullptr;
-  bool is_outdated = true;
-
   void AddStops();
   void Rebase();
   void RebaseGraph();
@@ -91,5 +89,6 @@ private:
   std::unordered_map<Graph::VertexId, std::pair<std::string, std::string>> vertex_id_to_name;
   std::unordered_map<Graph::EdgeId, Edge> edges;
 };
+}
 
 #endif //YANDEXCPLUSPLUS_5_BLACK_1_WEEK_7_TRANSPORT_BOOK_PART_G_MAP_ROUTE_H
