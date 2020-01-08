@@ -53,7 +53,6 @@ public:
   virtual double RealLength() const = 0;
   virtual double Length() const = 0;
   double Curvature() const;
-
   std::string GetName() const;
   std::vector<std::string> GetStopsName() const;
 
@@ -105,13 +104,20 @@ private:
   // Порядок маршрутов с данными о остановках
   std::vector<std::shared_ptr<Stop>> stops_;
   // Хранение уникальных остановок
-  std::unordered_set<std::string> unique_stops_;
+  std::unordered_set<std::string_view> unique_stops_;
 };
 
 struct RouteInfo {
   Route::RouteTypes type;
   std::string name;
   std::vector<std::string> stop_names;
+};
+
+struct DatabaseStat {
+  double min_lat = std::numeric_limits<double>::max();
+  double max_lat = 0;
+  double min_long = std::numeric_limits<double>::max();
+  double max_long = 0;
 };
 
 class Database {
@@ -122,13 +128,16 @@ public:
   void AddStop(const Stop &stop);
   std::shared_ptr<Stop> TakeOrAddStop(const std::string &stop_name);
   std::shared_ptr<Stop> TakeStop(const std::string &stop_name) const;
-  const StopData &TakeStops() const;
+  const StopData& TakeStops() const;
 
   void AddRoute(const std::string &route_name, std::shared_ptr<Route> route);
   std::shared_ptr<Route> TakeRoute(const std::string &route_name) const;
   // TODO возвращать контейнер, который НЕ позволяет изменять хранимые значения?
-  const RouteData TakeRoutes() const;
+  const RouteData& TakeRoutes() const;
+
+  const DatabaseStat& TakeStat() const;
 private:
+  DatabaseStat stat;
   StopData stops_;
   RouteData routes_;
 };

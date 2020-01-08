@@ -52,9 +52,9 @@ Circle& Circle::SetRadius(double radius) {
 
 void Circle::Render(std::ostream& out) const {
   out << "<circle ";
-  out << R"(cx=\")" << center_.x << R"(\" )";
-  out << R"(cy=\")" << center_.y << R"(\" )";
-  out << R"(r=\")" << radius_ << R"(\" )";
+  out << "cx=\"" << center_.x << "\" ";
+  out << "cy=\"" << center_.y << "\" ";
+  out << "r=\"" << radius_ << "\" ";
   PathProps::RenderAttrs(out);
   out << "/>";
 }
@@ -66,7 +66,7 @@ Polyline& Polyline::AddPoint(Point point) {
 
 void Polyline::Render(std::ostream& out) const {
   out << "<polyline ";
-  out << R"(points=\")";
+  out << "points=\"";
   bool first = true;
   for (const Point point : points_) {
     if (first) {
@@ -76,7 +76,7 @@ void Polyline::Render(std::ostream& out) const {
     }
     out << point.x << "," << point.y;
   }
-  out << R"(\" )";
+  out << "\" ";
   PathProps::RenderAttrs(out);
   out << "/>";
 }
@@ -108,13 +108,13 @@ Text& Text::SetData(const std::string& data) {
 
 void Text::Render(std::ostream& out) const {
   out << "<text ";
-  out << R"(x=\")" << point_.x << R"(\" )";
-  out << R"(y=\")" << point_.y << R"(\" )";
-  out << R"(dx=\")" << offset_.x << R"(\" )";
-  out << R"(dy=\")" << offset_.y << R"(\" )";
-  out << R"(font-size=\")" << font_size_ << R"(\" )";
+  out << "x=\"" << point_.x << "\" ";
+  out << "y=\"" << point_.y << "\" ";
+  out << "dx=\"" << offset_.x << "\" ";
+  out << "dy=\"" << offset_.y << "\" ";
+  out << "font-size=\"" << font_size_ << "\" ";
   if (font_family_) {
-    out << R"(font-family=\")" << *font_family_ << R"(\" )";
+    out << "font-family=\"" << *font_family_ << "\" ";
   }
   PathProps::RenderAttrs(out);
   out << ">";
@@ -123,16 +123,11 @@ void Text::Render(std::ostream& out) const {
 }
 
 void Document::Render(std::ostream& out) const {
-  out << R"(<?xml version=\"1.0\" encoding=\"UTF-8\" ?>)";
-  out << R"(<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">)";
+  out << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>";
+  out << "<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">";
   for (const auto& object_ptr : objects_) {
     object_ptr->Render(out);
   }
   out << "</svg>";
 }
-
-void Document::Clear() {
-  objects_.clear();
-}
-
 }

@@ -36,48 +36,51 @@ public:
 class RenderConfig {
 public:
   RenderConfig() = default;
-  RenderConfig(RenderParams rp);
-  void ChangeRoutingParams(RenderParams rp);
-  Svg::Point ZoomIn(double longitude, double latitude);
+  RenderConfig(const RenderParams& rp);
+  void ChangeRoutingParams(const RenderParams& rp);
+  Svg::Point ZoomIn(const Coordinates& coord);
+  Svg::Color GetNewColor();
   RenderParams render_params;
 private:
-  double coef;
+  size_t curr_color = 0;
+  double coef = 0;
 };
 
 
 
 class Layer {
 public:
-  Layer(const RenderConfig& rp);
+  Layer(RenderConfig &rp);
   virtual ~Layer() = default;
-  virtual std::vector<Svg::ObjectHolder> CreateLayer(const Database& db) = 0;
+  virtual std::vector<Svg::SvgObjectHolder> CreateLayer(const Database& db) = 0;
+  void Clear();
 protected:
-  const RenderConfig& params;
+  RenderConfig params;
 };
 
 class BusLayer : public Layer {
 public:
   using Layer::Layer;
-  std::vector<Svg::ObjectHolder> CreateLayer(const Database& db) override;
+  std::vector<Svg::SvgObjectHolder> CreateLayer(const Database& db) override;
 };
 
 class StopLayer : public Layer {
 public:
   using Layer::Layer;
-  std::vector<Svg::ObjectHolder> CreateLayer(const Database& db) override;
+  std::vector<Svg::SvgObjectHolder> CreateLayer(const Database& db) override;
 };
 
 class StopNameLayer : public Layer {
 public:
   using Layer::Layer;
-  std::vector<Svg::ObjectHolder> CreateLayer(const Database& db) override;
+  std::vector<Svg::SvgObjectHolder> CreateLayer(const Database& db) override;
 };
 
-class BusNameLayer : public Layer {
+/*class BusNameLayer : public Layer {
 public:
   using Layer::Layer;
-  std::vector<Svg::ObjectHolder> CreateLayer(const Database& db) override;
-};
+  std::vector<Svg::SvgObjectHolder> CreateLayer(const Database& db) override;
+};*/
 
 class Map : public Connector {
   using LayerHolder = std::unique_ptr<Layer>;
@@ -86,16 +89,18 @@ class Map : public Connector {
 public:
   using Connector::Connector;
   Map();
-  Map(std::shared_ptr<Database> db, RenderParams params);
+  Map(std::shared_ptr<Database> db, const RenderParams& params);
 
   void SetLayerOrder(const std::vector<LayersType>& layers);
   void CreateMap();
-  std::string RenderMap() const;
+  std::string RenderMap();
   void ClearMap();
 private:
+  void CreateLayerOrder();
   Svg::Document doc;
   std::vector<LayerHolder> layers;
   RenderConfig render_config;
+  std::vector<LayersType> current_order = {LayersType::BUS, LayersType::STOP, LayersType::STOP_NAME};
 };
 }
 #endif //YANDEXCPLUSPLUS_5_BLACK_1_WEEK_7_TRANSPORT_BOOK_PART_G_MAP_MAP_H

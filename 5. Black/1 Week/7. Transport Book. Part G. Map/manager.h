@@ -14,6 +14,7 @@
 #include "request.h"
 #include "database.h"
 #include "route.h"
+#include "map.h"
 
 namespace TransportDatabase {
 void PrintResults(const std::vector<std::string> &results, std::ostream &out = std::cout);
@@ -22,21 +23,12 @@ public:
   DatabaseManager();
   explicit DatabaseManager(std::shared_ptr<Database> db);
   void ChangeDatabase(std::shared_ptr<Database> db);
-
-  std::vector<std::string> ProcessAllRequests(std::istream &in = std::cin);
-  std::string ProcessReadRequest(const std::string &read);
-  std::string ProcessModifyRequest(const std::string &modify);
-
   Json::Node ProcessAllJSONRequests(std::istream &in = std::cin);
   Json::Node ProcessJSONReadRequest(const Json::Node &node);
   Json::Node ProcessJSONModifyRequest(const Json::Node &node);
-
 private:
-  template<typename Number>
-  Number ReadNumberOnLine(std::istream &stream);
-  std::string MakeAnswerFromAnyRequest(RequestHolder request);
-  RequestHolder ParseModifyRequest(std::string_view request_str);
-  RequestHolder ParseReadRequest(std::string_view request_str);
+
+  RenderParams ExtractRenderParams(const Json::Node& node);
 
   Json::Node MakeJSONAnswerFromAnyRequest(RequestHolder request);
   RequestHolder ParseModifyJSONRequest(const Json::Node &node);
@@ -49,15 +41,7 @@ private:
 
   std::shared_ptr<Database> db_;
   std::shared_ptr<Router> router;
+  std::shared_ptr<Map> render;
 };
-
-template<typename Number>
-Number DatabaseManager::DatabaseManager::ReadNumberOnLine(std::istream &stream) {
-  Number number;
-  stream >> number;
-  std::string dummy;
-  getline(stream, dummy);
-  return number;
-}
 }
 #endif //YANDEXBROWNFINAL_4_BROWN_FINAL_PROJECT_PART_A_MANAGER_H

@@ -142,6 +142,10 @@ void Database::AddStop(const Stop &stop) {
       curr_stop->distance_to_stop[stop.GetName()] = distance;
     }
   }
+  stat.min_lat = std::min(stat.min_lat, stop.GetCoord().GetLatitude());
+  stat.max_lat = std::max(stat.max_lat, stop.GetCoord().GetLatitude());
+  stat.min_long = std::min(stat.min_long, stop.GetCoord().GetLongitude());
+  stat.max_long = std::max(stat.max_long, stop.GetCoord().GetLongitude());
 }
 
 std::shared_ptr<Stop> Database::TakeOrAddStop(const std::string &stop_name) {
@@ -201,11 +205,15 @@ std::shared_ptr<Route> RouteBuilder::MakeLinear(RouteInfo &&info) {
   return std::make_shared<LinearRoute>(std::move(info.name), std::move(info.stop_names), std::move(stops_ptr));
 }
 
-const Database::StopData &Database::TakeStops() const {
+const Database::StopData& Database::TakeStops() const {
   return stops_;
 }
 
-const Database::RouteData Database::TakeRoutes() const {
+const Database::RouteData& Database::TakeRoutes() const {
   return routes_;
+}
+
+const DatabaseStat& Database::TakeStat() const {
+  return stat;
 }
 }

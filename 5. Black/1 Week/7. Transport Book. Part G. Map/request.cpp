@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <map>
 #include <cassert>
+#include <fstream>
 #include "json.h"
 #include "request.h"
 
@@ -47,24 +48,10 @@ RequestHolder Request::Create(Request::Type type) {
     return std::make_unique<TakeStopRequest>();
   case Request::Type::CREATE_ROUTE:
     return std::make_unique<CreateRouteRequest>();
+  case Request::Type::CREATE_MAP:
+    return std::make_unique<CreateMapRequest>();
   default:
     return nullptr;
-  }
-}
-
-void AddStopRequest::ParseFrom(std::string_view input) {
-  size_t delim_name = input.find(':');
-  stop_name = Strip(input.substr(0, delim_name));
-  auto tokens = SplitBy(input.substr(delim_name + 2), ',');
-  latitude = std::stod(Strip(tokens[0]));
-  longitude = std::stod(Strip(tokens[1]));
-  for (size_t i = 2; i < tokens.size(); ++i) {
-    size_t m_pos = tokens[i].find('m');
-    double distance = std::stod(Strip(tokens[i].substr(0, m_pos)));
-    auto tail = tokens[i].substr(m_pos);
-    size_t to_pos = tail.find('o');
-    std::string name = Strip(tail.substr(to_pos + 1));
-    distances.emplace_back(name, distance);
   }
 }
 
@@ -88,38 +75,6 @@ void AddStopRequest::Process(Database &db ) const {
              CoordinatesBuilder().SetLatitude(latitude).SetLongitude(longitude).Build(), distances});
 }
 
-void AddRouteRequest::ParseFrom(std::string_view input) {
-  size_t delim_name = input.find(':');
-  route_name = Strip(input.substr(0, delim_name));
-  std::vector<char> types = {'-', '>'};
-  char delim_type = '-';
-  for (auto type : types) {
-    size_t delim_pos = input.find(type);
-    if (delim_pos != input.npos) {
-      delim_type = type;
-      route_type = sign_to_route.at(delim_type);
-      break;
-    }
-  }
-  auto tokens = SplitBy(input.substr(delim_name + 2), delim_type);
-  stops_name.reserve(tokens.size());
-  for (auto& token : tokens) {
-    std::string stop;
-    if (token.front() == ' ') {
-      if (token.back() == ' ') {
-        stop = Strip(token.substr(1, token.size() - 2));
-      }
-      else {
-        stop = Strip(token.substr(1,token.size() - 1));
-      }
-    }
-    else {
-      stop = Strip(token.substr(0,token.size() - 1));
-    }
-    stops_name.push_back(stop);
-  }
-}
-
 void AddRouteRequest::ParseFromJSON(const Json::Node &node) {
   const auto& map_elem = node.AsMap();
   route_name = map_elem.at("name").AsString();
@@ -137,17 +92,13 @@ void AddRouteRequest::Process(Database &db) const {
               RouteBuilder(db).MakeRoute({route_type, route_name, stops_name}));
 }
 
-void TakeRouteRequest::ParseFrom(std::string_view input) {
-  route_name = input;
-}
-
 void TakeRouteRequest::ParseFromJSON(const Json::Node &node) {
   const auto& map_elem = node.AsMap();
   route_name = map_elem.at("name").AsString();
   request_id = map_elem.at("id").AsInt();
 }
 
-TakeRouteAnswer TakeRouteRequest::Process(const Database &db) const {
+TakeRouteAnswer TakeRouteRequest::Process(Database &db) const {
   auto route = db.TakeRoute(route_name);
   if (route) {
     return {request_id, true, route_name, route->CountOfStops(), route->CountOfUniqueStops(), route->RealLength(), route->Curvature()};
@@ -155,18 +106,6 @@ TakeRouteAnswer TakeRouteRequest::Process(const Database &db) const {
   else {
     return {request_id, false, route_name, 0, 0, 0, 0};
   }
-}
-
-std::string TakeRouteRequest::StringAnswer(const TakeRouteAnswer &result) const {
-  std::stringstream s;
-  if (result.has_value) {
-    s << std::setprecision(6) << "Bus " << result.route_name << ": " << result.stops_count << " stops on route, " <<
-      result.unique_stops_count << " unique stops, " << result.length << " route length, " << result.curvature << " curvature";
-  }
-  else {
-    s << "Bus " << result.route_name << ": not found";
-  }
-  return s.str();
 }
 
 Json::Node TakeRouteRequest::JSONAnswer(const TakeRouteAnswer &result) const {
@@ -184,17 +123,13 @@ Json::Node TakeRouteRequest::JSONAnswer(const TakeRouteAnswer &result) const {
   return Json::Node(answer);
 }
 
-void TakeStopRequest::ParseFrom(std::string_view input) {
-  stop_name = input;
-}
-
 void TakeStopRequest::ParseFromJSON(const Json::Node &node) {
   const auto& map_elem = node.AsMap();
   stop_name = map_elem.at("name").AsString();
   request_id = map_elem.at("id").AsInt();
 }
 
-TakeStopAnswer TakeStopRequest::Process(const Database &db) const {
+TakeStopAnswer TakeStopRequest::Process(Database &db) const {
   auto stop = db.TakeStop(stop_name);
   if (stop) {
     return {request_id, true, stop_name, stop->TakeRoutes()};
@@ -202,25 +137,6 @@ TakeStopAnswer TakeStopRequest::Process(const Database &db) const {
   else {
     return {request_id, false, stop_name, {}};
   }
-}
-
-std::string TakeStopRequest::StringAnswer(const TakeStopAnswer &result) const {
-  std::stringstream s;
-  if (result.in_base) {
-    if (result.names.empty()) {
-      s << "Stop " << result.stop_name << ": no buses";
-    }
-    else {
-      s << "Stop " << result.stop_name << ": buses";
-      for (const auto& route : result.names) {
-        s << " " << route;
-      }
-    }
-  }
-  else {
-    s << "Stop " << result.stop_name << ": not found";
-  }
-  return s.str();
 }
 
 Json::Node TakeStopRequest::JSONAnswer(const TakeStopAnswer &result) const {
@@ -252,9 +168,7 @@ void CreateRouteRequest::ParseFromJSON(const Json::Node &node) {
   request_id = map_elem.at("id").AsInt();
 }
 
-void CreateRouteRequest::ParseFrom(std::string_view input) {}
-
-CreateRouteAnswer CreateRouteRequest::Process(const Router& db) const {
+CreateRouteAnswer CreateRouteRequest::Process(Router& db) const {
   auto nodes = db.CreateRoute(from, to);
   auto first = dynamic_cast<InfoNode&>(*nodes.front());
   nodes.pop_front();
@@ -263,8 +177,6 @@ CreateRouteAnswer CreateRouteRequest::Process(const Router& db) const {
   }
   return {request_id, true, first.total_time.value(), std::move(nodes)};
 }
-
-std::string CreateRouteRequest::StringAnswer(const CreateRouteAnswer &result) const {}
 
 Json::Node CreateRouteRequest::JSONAnswer(const CreateRouteAnswer &result) const {
   std::map<std::string, Json::Node> answer;
@@ -297,4 +209,25 @@ Json::Node CreateRouteRequest::JSONAnswer(const CreateRouteAnswer &result) const
   answer["items"] = Json::Node(items);
   return answer;
 }
+
+void CreateMapRequest::ParseFromJSON(const Json::Node &node) {
+  const auto& map_elem = node.AsMap();
+  request_id = map_elem.at("id").AsInt();
+}
+
+CreateMapAnswer CreateMapRequest::Process(TransportDatabase::Map &db) const {
+  db.CreateMap();
+  auto res = db.RenderMap();
+  return {request_id, res};
+}
+
+Json::Node CreateMapRequest::JSONAnswer(const TransportDatabase::CreateMapAnswer &result) const {
+  std::map<std::string, Json::Node> answer;
+  answer["request_id"] = Json::Node(result.id);
+  answer["map"] = result.svg;
+  std::ofstream dbg("res.svg");
+  dbg << result.svg;
+  return answer;
+}
+
 }

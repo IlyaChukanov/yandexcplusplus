@@ -12,7 +12,7 @@ namespace Json {
 class Node;
 using Dict = std::map<std::string, Node>;
 
-class Node : std::variant<std::vector<Node>, Dict, bool, int, double, std::string> {
+class Node : public std::variant<std::vector<Node>, Dict, bool, int, double, std::string> {
 public:
   using variant::variant;
   const variant &GetBase() const { return *this; }

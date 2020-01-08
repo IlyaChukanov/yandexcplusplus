@@ -10,6 +10,7 @@
 #include "json.h"
 #include "database.h"
 #include "route.h"
+#include "map.h"
 
 namespace TransportDatabase {
 
@@ -25,10 +26,10 @@ public:
     ADD_STOP,
     TAKE_ROUTE,
     TAKE_STOP,
-    CREATE_ROUTE
+    CREATE_ROUTE,
+    CREATE_MAP
   };
   explicit Request(Type type) : type_(type) {}
-  virtual void ParseFrom(std::string_view input) = 0;
   virtual void ParseFromJSON(const Json::Node& node) = 0;
   virtual ~Request() = default;
 
@@ -45,10 +46,8 @@ template <typename Result, typename Processor>
 class ReadRequest : public Request {
 public:
   using Request::Request;
-  void ParseFrom(std::string_view input) override = 0;
   void ParseFromJSON(const Json::Node& node) override = 0;
-  virtual Result Process(const Processor& db) const = 0;
-  virtual std::string StringAnswer(const Result& result) const = 0;
+  virtual Result Process(Processor &db) const = 0;
   virtual Json::Node JSONAnswer(const Result& result) const = 0;
 protected:
   int request_id = 0;
@@ -59,13 +58,11 @@ class ModifyRequest : public Request {
 public:
   using Request::Request;
   virtual void Process(Processor& db) const = 0;
-  void ParseFrom(std::string_view input) override = 0;
 };
 
 class AddStopRequest : public ModifyRequest<Database> {
 public:
   AddStopRequest() : ModifyRequest(Request::Type::ADD_STOP) {}
-  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   void Process(Database& db) const override;
 private:
@@ -77,7 +74,6 @@ private:
 class AddRouteRequest : public ModifyRequest<Database> {
 public:
   AddRouteRequest() : ModifyRequest(Request::Type::ADD_ROUTE) {}
-  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
   void Process(Database& db) const override;
 private:
@@ -99,10 +95,8 @@ struct TakeRouteAnswer {
 class TakeRouteRequest : public ReadRequest<TakeRouteAnswer, Database> {
 public:
   TakeRouteRequest() : ReadRequest(Request::Type::TAKE_ROUTE) {}
-  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
-  TakeRouteAnswer Process(const Database& db) const override;
-  std::string StringAnswer(const TakeRouteAnswer& result) const override;
+  TakeRouteAnswer Process(Database& db) const override;
   Json::Node JSONAnswer(const TakeRouteAnswer& result) const override;
 private:
   std::string route_name;
@@ -118,10 +112,8 @@ struct TakeStopAnswer {
 class TakeStopRequest : public ReadRequest<TakeStopAnswer, Database> {
 public:
   TakeStopRequest() : ReadRequest(Request::Type::TAKE_STOP) {}
-  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
-  TakeStopAnswer Process(const Database& db) const override;
-  std::string StringAnswer(const TakeStopAnswer& result) const override;
+  TakeStopAnswer Process(Database& db) const override;
   Json::Node JSONAnswer(const TakeStopAnswer& result) const override;
 private:
   std::string stop_name;
@@ -137,14 +129,25 @@ struct CreateRouteAnswer {
 class CreateRouteRequest : public ReadRequest<CreateRouteAnswer, Router> {
 public:
   CreateRouteRequest() : ReadRequest(Request::Type::CREATE_ROUTE) {}
-  void ParseFrom(std::string_view input) override;
   void ParseFromJSON(const Json::Node& node) override;
-  CreateRouteAnswer Process(const Router& db) const override;
-  std::string StringAnswer(const CreateRouteAnswer& result) const override;
+  CreateRouteAnswer Process(Router& db) const override;
   Json::Node JSONAnswer(const CreateRouteAnswer& result) const override;
 private:
   std::string from;
   std::string to;
+};
+
+struct CreateMapAnswer {
+  int id;
+  std::string svg;
+};
+
+class CreateMapRequest : public ReadRequest<CreateMapAnswer, Map> {
+public:
+  CreateMapRequest() : ReadRequest(Request::Type::CREATE_MAP) {}
+  void ParseFromJSON(const Json::Node& node) override;
+  CreateMapAnswer Process(Map& db) const override;
+  Json::Node JSONAnswer(const CreateMapAnswer& result) const override;
 };
 }
 #endif //YANDEXYELLOWFINAL_4_BROWN_FINAL_PROJECT_PART_A_REQUEST_H

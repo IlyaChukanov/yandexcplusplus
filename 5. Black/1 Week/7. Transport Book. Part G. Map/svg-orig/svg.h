@@ -84,18 +84,18 @@ public:
   }
 
   void RenderAttrs(std::ostream& out) const {
-    out << R"(fill=\")";
+    out << "fill=\"";
     RenderColor(out, fill_color_);
-    out << R"(\" )";
-    out << R"(stroke=\")";
+    out << "\" ";
+    out << "stroke=\"";
     RenderColor(out, stroke_color_);
-    out << R"(\" )";
-    out << R"(stroke-width=\")" << stroke_width_ << R"(\" )";
+    out << "\" ";
+    out << "stroke-width=\"" << stroke_width_ << "\" ";
     if (stroke_line_cap_) {
-      out << R"(stroke-linecap=\")" << *stroke_line_cap_ << R"(\" )";
+      out << "stroke-linecap=\"" << *stroke_line_cap_ << "\" ";
     }
     if (stroke_line_join_) {
-      out << R"(stroke-linejoin=\")" << *stroke_line_join_ << R"(\" )";
+      out << "stroke-linejoin=\"" << *stroke_line_join_ << "\" ";
     }
   }
 
@@ -157,7 +157,6 @@ public:
     objects_.push_back(std::move(object));
   }
   void Render(std::ostream& out) const override;
-  void Clear();
 private:
   std::vector<SvgObjectHolder> objects_;
 };
