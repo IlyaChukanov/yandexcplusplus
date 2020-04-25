@@ -80,6 +80,37 @@ size_t LinearRoute::CountOfUniqueStops() const {
   return unique_stops_.size();
 }
 
+/*
+Код функции из части С, который прошел тесты
+double LinearRoute::RealLength() const {
+  double result = 0;
+  for (size_t i = 0; i < stops_.size() - 1; ++i) {
+    // Вычисление расстояние от А к Б
+    bool is_same_length = true;
+    if(stops_[i]->distance_to_stop.count(stops_[i + 1]->GetName())) {
+      result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
+      is_same_length = true;
+    }
+    else {
+      result += Coordinates::Distance(stops_[i]->GetCoord(), stops_[i + 1]->GetCoord());
+      is_same_length = false;
+    }
+
+    // Вычисление расстояния от Б к А
+    if(stops_[i + 1]->distance_to_stop.count(stops_[i]->GetName())) {
+      result += stops_[i + 1]->distance_to_stop.at(stops_[i]->GetName());
+    }
+    else if (is_same_length) {
+      result += stops_[i]->distance_to_stop.at(stops_[i + 1]->GetName());
+    }
+    else {
+      result += Coordinates::Distance(stops_[i + 1]->GetCoord(), stops_[i]->GetCoord());
+    }
+  }
+  return result;
+}
+*/
+
 double LinearRoute::RealLength() const {
   double result = 0;
   for (size_t i = 0; i < stops_.size() - 1; ++i) {
