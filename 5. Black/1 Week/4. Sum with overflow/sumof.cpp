@@ -5,8 +5,6 @@
 #include <limits>
 #include <iostream>
 
-
-
 bool CheckSumOverflow(int64_t first, int64_t second) {
   bool fir_neg = first > 0;
   bool sec_neg = second > 0;
